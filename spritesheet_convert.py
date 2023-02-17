@@ -1,17 +1,8 @@
 import SPRITESHEETS
 
-spritesheets_dot_c = """
+spritesheets_dot_c = """# include "sprites.h"
 # include <SDL2/SDL.h>
 # include <SDL2/SDL_image.h>
-
-void load_spritesheet(SDL_Renderer* rend,
-		      const char* filename,
-		      const char* names[],
-		      int xs[],
-		      int ys[],
-		      int ws[],
-		      int hs[],
-		      int count);
 
 void spritesheet_load(SDL_Renderer* rend) {
 """
@@ -36,6 +27,20 @@ for filename in SPRITESHEETS.SPRITESHEETS.keys():
     load_spritesheet(rend, "img/{filename}", {name}names, {name}xs, {name}ys, {name}ws, {name}hs, {length});
 """
 
+keys = set()
+for key in SPRITESHEETS.OFFSETS.keys():
+    if type(SPRITESHEETS.OFFSETS[key]) == dict:
+        for name in SPRITESHEETS.OFFSETS[key].keys():
+            if name in keys: continue
+            x, y = SPRITESHEETS.OFFSETS[key][name]
+            spritesheets_dot_c += f"    add_offset(\"{name}\", {x}, {y});\n"
+            keys.add(name)
+    else:
+        if key in keys: continue
+        x, y = SPRITESHEETS.OFFSETS[key]
+        spritesheets_dot_c += f"    add_offset(\"{key}\", {x}, {y});\n"
+        keys.add(key)
+    
 spritesheets_dot_c += "}\n"
 
 with open("spritesheets.c", "w+") as f:

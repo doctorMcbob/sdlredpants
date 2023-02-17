@@ -11,7 +11,9 @@ this is going to need a lot,
 I will be using uthash.h as my dictionary implementation
 
  */
-# include "inputs.c"
+# include "inputs.h"
+# include "sprites.h"
+
 # include <string.h>
 # include <stdio.h>
 
@@ -22,9 +24,7 @@ I will be using uthash.h as my dictionary implementation
 # define W 1152
 # define H 640
 
-SDL_Texture* get_sprite(const char* name);
 void spritesheet_load(SDL_Renderer* rend);
-void add_input_state(const char*, SDL_Joystick* joy);
 
 int main (void)
 {
@@ -59,27 +59,30 @@ int main (void)
     }
 
   spritesheet_load(rend);
+  printf("Here\n");
+  
   add_input_state("TEST", NULL);
   InputState* testInputs;
   testInputs = get_input_state("TEST");
   
   SDL_Rect dest;
 
-  SDL_Texture* sprite = NULL;
+  Sprite* sprite;
   while (input_update() != -1) {
     SDL_RenderClear(rend);
 
     if (testInputs->A) {
       sprite = get_sprite("redpantsstand");
-      SDL_QueryTexture(sprite, NULL, NULL, &dest.w, &dest.h);
+      SDL_QueryTexture(sprite->image, NULL, NULL, &dest.w, &dest.h);
     } else if (testInputs->B) {
       sprite = get_sprite("redpantsrollout");
-      SDL_QueryTexture(sprite, NULL, NULL, &dest.w, &dest.h);
+      SDL_QueryTexture(sprite->image, NULL, NULL, &dest.w, &dest.h);
     } else {
       sprite = NULL;
     }
-    
-    SDL_RenderCopy(rend, sprite, NULL, NULL);
+    if (sprite) {
+      SDL_RenderCopy(rend, sprite->image, NULL, NULL);
+    }
     SDL_RenderPresent(rend);
     SDL_Delay(1000/120);
   }

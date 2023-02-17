@@ -10,61 +10,54 @@ https://github.com/troydhanson/uthash/blob/master/src/uthash.h
 
 # include "uthash.h"
 # include "utlist.h"
+# include "sprites.h"
+
 # include <SDL2/SDL.h>
 # include <SDL2/SDL_image.h>
 
-typedef struct Sprite {
-  char name[32];
-  SDL_Texture* image;
-  UT_hash_handle hh;
-} Sprite;
-
-typedef struct Offset {
-  char name[32];
-  int x;
-  int y;
-  UT_hash_handle hh;
-} Offset;
-
-typedef struct SpriteMapEntry {
-  char state[32];
-  int frame;
-  char spriteKey[32];
-  struct SpriteMapEntry* next;
-  struct SpriteMapEntry* prev;
-} SpriteMapEntry;
-
-typedef struct SpriteMap {
-  char* name[32];
-  SpriteMapEntry* entries;
-  UT_hash_handle hh;
-} SpriteMap;
-
 Sprite* sprites = NULL;
-Offset* offsets = NULL;
 SpriteMap* spritemaps = NULL;
 
-void add_offset(const char* name, int x, int y) {
-  struct Offset *o;
-  o = malloc(sizeof(Offset));
-  if (o == NULL) {
+void add_sprite_map(const char* name) {
+  struct SpriteMap *sm;
+  sm = malloc(sizeof(SpriteMap));
+  if (sm == NULL) {
     exit(-1);
   }
-  strcpy(o->name, name);
-  o->x = x;
-  o->y = y;
-  HASH_ADD_STR(offsets, name, o);
+  strcpy(sm->name, name);
+  sm->entries = NULL;
+  HASH_ADD_STR(spritemaps, name, sm);
 }
 
-Offset* get_offset(const char* name) {
-  struct Offset *o;
+SpriteMap* get_sprite_map(const char* name) {
+  struct SpriteMap *sm;
 
-  HASH_FIND_STR(offsets, name, o);
-  if (o) {
-    return o;
+  HASH_FIND_STR(spritemaps, name, sm);
+  if (sm) {
+    return sm;
   } else {
     return NULL;
   }
+}
+
+void add_to_sprite_map(const char* name, const char* state, int frame, const char* spriteKey) {
+  struct SpriteMap *sm;
+  sm = get_sprite_map(name);
+  if (sm == NULL) {
+    printf("No sprite map %s", name);
+    return;
+  }
+  
+  struct SpriteMapEntry *sme;
+  sme = malloc(sizeof(SpriteMapEntry));
+  if (sme == NULL) {
+    exit(-1);
+  }
+  strcpy(sme->state, state);
+  sme->frame = frame;
+  strcpy(sme->spriteKey, spriteKey);
+
+  DL_APPEND(sm->entries, sme);
 }
 
 void add_sprite(const char* name, SDL_Texture* image) {
@@ -78,14 +71,25 @@ void add_sprite(const char* name, SDL_Texture* image) {
   HASH_ADD_STR(sprites, name, s);
 }
 
-SDL_Texture* get_sprite(const char* name) {
+Sprite* get_sprite(const char* name) {
   struct Sprite *s;
   
   HASH_FIND_STR(sprites, name, s);
   if (s) {
-    return s->image;
+    return s;
   } else {
     return NULL;
+  }
+}
+
+void add_offset(const char* name, int x, int y) {
+  struct Sprite *s;
+  s = get_sprite(name);
+  if (s) {
+    s->offx = x;
+    s->offy = y;
+  } else {
+    printf("No sprite %s\n", name);
   }
 }
 
