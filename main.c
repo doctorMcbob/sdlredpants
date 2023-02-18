@@ -13,7 +13,7 @@ I will be using uthash.h as my dictionary implementation
  */
 # include "inputs.h"
 # include "sprites.h"
-
+# include "worlds.h"
 # include <string.h>
 # include <stdio.h>
 
@@ -67,25 +67,20 @@ int main (void)
   add_input_state("TEST", NULL);
   InputState* testInputs;
   testInputs = get_input_state("TEST");
-  
-  SDL_Rect dest;
 
-  Sprite* sprite;
+  World* world;
+  world = get_world("root");
+  if (!world) {
+    printf("Could not find world root");
+  }
   while (input_update() != -1) {
     SDL_RenderClear(rend);
+    
+    if (world) {
+      draw_world(world, rend);
+    }
 
-    if (testInputs->A) {
-      sprite = get_sprite("redpantsstand");
-      SDL_QueryTexture(sprite->image, NULL, NULL, &dest.w, &dest.h);
-    } else if (testInputs->B) {
-      sprite = get_sprite("redpantsrollout");
-      SDL_QueryTexture(sprite->image, NULL, NULL, &dest.w, &dest.h);
-    } else {
-      sprite = NULL;
-    }
-    if (sprite) {
-      SDL_RenderCopy(rend, sprite->image, NULL, NULL);
-    }
+    
     SDL_RenderPresent(rend);
     SDL_Delay(1000/120);
   }

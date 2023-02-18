@@ -1,5 +1,6 @@
 # include <SDL2/SDL.h>
 # include "uthash.h"
+# include "sprites.h"
 
 #ifndef ACTORS_DEF
 # define ACTORS_DEF 1
@@ -54,4 +55,6 @@ void copy_actor(Actor* copy,  Actor *a);
 void add_template(Actor* copy);
 void add_actor_from_templatekey(char* templateKey);
 void add_template_from_actorkey(char* actorKey);
+void update_actor(char* actorKey);
+Sprite* get_sprite_for_actor(char* actorKey);
 #endif

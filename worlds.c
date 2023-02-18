@@ -1,5 +1,6 @@
 # include "actors.h"
 # include "worlds.h"
+# include "sprites.h"
 # include "utlist.h"
 # include "uthash.h"
 
@@ -50,6 +51,66 @@ void add_actor_to_world(const char* worldkey, const char* actorname) {
   strcpy(ae->actorKey, actorname);
 
   DL_APPEND(w->actors, ae);
-  printf("Added actor %s to world %s\n", actorname, worldkey);
 }
 
+void update_world(char* worldKey) {
+  struct World *w;
+  w = get_world(worldKey);
+  struct ActorEntry *ae, *tmp;
+  DL_FOREACH_SAFE(w->actors, ae, tmp) {
+    update_actor(ae->actorKey);
+  }
+}
+
+void _draw_background(World* world, SDL_Renderer* rend) {
+  Sprite *background;
+  background = get_sprite(world->background);
+  if (!background) {
+    return;
+  }
+  SDL_Rect dest;
+  SDL_Rect src;
+  src.x = 0;
+  src.y = 0;
+  dest.x = 0;
+  dest.y = 0;
+  SDL_QueryTexture(background->image, NULL, NULL, &dest.w, &dest.h);
+  SDL_QueryTexture(background->image, NULL, NULL, &src.w, &src.h);
+  int w, h;
+  SDL_GetRendererOutputSize(rend, &w, &h);
+
+  for (int y = 0; y < h/dest.h+2; y++) {
+    dest.y = y*dest.h;
+    for (int x = 0; x < w/dest.w+2; x++) {
+      dest.x = x*dest.w;
+      // TODO: offset by frame background offset value
+      SDL_RenderCopy(rend, background->image, &src, &dest);
+    }
+  }
+}
+
+void draw_world(World* world, SDL_Renderer* rend) {
+  _draw_background(world, rend);
+
+  struct ActorEntry *ae;
+  DL_FOREACH(world->actors, ae) {
+    Actor* a;
+    a = get_actor(ae->actorKey);
+    if (!a) continue;
+
+    Sprite *s;
+    s = get_sprite_for_actor(ae->actorKey);
+    if (!s) continue;
+    SDL_Rect dest;
+    SDL_Rect src;
+    dest.x = a->ECB->x + s->offx;
+    dest.y = a->ECB->y + s->offy;
+    src.x = 0;
+    src.y = 0;
+
+    SDL_QueryTexture(s->image, NULL, NULL, &dest.w, &dest.h);
+    SDL_QueryTexture(s->image, NULL, NULL, &src.w, &src.h);
+    
+    SDL_RenderCopy(rend, s->image, &src, &dest);
+  }
+};

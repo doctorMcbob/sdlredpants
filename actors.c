@@ -199,3 +199,31 @@ void add_template_from_actorkey(char* actorKey) {
   HASH_ADD_STR(templates, name, a);
 }
 
+void update_actor(char* actorKey) {
+  // TODO
+}
+
+Sprite* get_sprite_for_actor(char* actorKey) {
+  struct Actor *a;
+  a = get_actor(actorKey);
+  if (!a) return NULL;
+  struct SpriteMap *sm;
+  sm = get_sprite_map(a->spritemapkey);
+  if (!sm) return NULL;
+  SpriteMapEntry *best, *sme;
+  best = NULL;
+  DL_FOREACH(sm->entries, sme) {
+    if (strcmp(a->state, sme->state) != 0) continue;
+    if (a->frame < sme->frame) continue;
+    if (best)
+      if (sme->frame > best->frame) continue;
+    best = sme;
+  }
+  if (!best) {
+    return NULL;
+  }
+  Sprite *sprite;
+  sprite = get_sprite(best->spriteKey);
+  return sprite;
+}
+

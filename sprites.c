@@ -74,7 +74,7 @@ void add_sprite(const char* name, SDL_Texture* image) {
 
 Sprite* get_sprite(const char* name) {
   struct Sprite *s;
-  
+
   HASH_FIND_STR(sprites, name, s);
   if (s) {
     return s;
@@ -89,8 +89,6 @@ void add_offset(const char* name, int x, int y) {
   if (s) {
     s->offx = x;
     s->offy = y;
-  } else {
-    printf("No sprite %s\n", name);
   }
 }
 
