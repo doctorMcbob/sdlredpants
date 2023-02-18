@@ -5,7 +5,8 @@ its really a dictionary of name -> sprite (SDL_Texture)
 
 Using the implementation of a dictionary like hash `uthash.h`
 https://github.com/troydhanson/uthash/blob/master/src/uthash.h
-
+and the similar imlpementation of a doubly linked list `utlist.h`
+https://github.com/troydhanson/uthash/blob/master/src/utlist.h
 */
 
 # include "uthash.h"

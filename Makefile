@@ -11,7 +11,7 @@ CFLAGS := $(SDL_FLAGS) -ggdb3 -O0 --std=c99 -Wall
 HDRS :=
 
 # add source files here
-SRCS := sprites.c spritesheets.c main.c inputs.c
+SRCS := sprites.c spritesheets.c main.c inputs.c actors.c actordata.c worlds.c worlddata.c
 
 # generate names of object files
 OBJS := $(SRCS:.c=.o)

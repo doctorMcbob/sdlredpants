@@ -40,7 +40,17 @@ for key in SPRITESHEETS.OFFSETS.keys():
         x, y = SPRITESHEETS.OFFSETS[key]
         spritesheets_dot_c += f"    add_offset(\"{key}\", {x}, {y});\n"
         keys.add(key)
-    
+
+for key in SPRITESHEETS.SPRITEMAPS:
+    if "\\" in key: continue
+    spritemap = SPRITESHEETS.SPRITEMAPS[key]
+    spritesheets_dot_c += f"    add_sprite_map(\"{key}\");\n"
+    for index in spritemap:
+        spritekey = spritemap[index]
+        if "\\" in spritekey: continue
+        state, frame = index.split(":") if ":" in index else (index, "0")
+        spritesheets_dot_c += f"    add_to_sprite_map(\"{key}\", \"{state}\", {frame}, \"{spritekey}\");\n"
+
 spritesheets_dot_c += "}\n"
 
 with open("spritesheets.c", "w+") as f:
