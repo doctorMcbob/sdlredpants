@@ -56,5 +56,6 @@ void add_template(Actor* copy);
 void add_actor_from_templatekey(char* templateKey);
 void add_template_from_actorkey(char* actorKey);
 void update_actor(char* actorKey);
-Sprite* get_sprite_for_actor(char* actorKey);
+Sprite* get_sprite_for_actor(Actor* actor);
+void draw_actor(SDL_Renderer* rend, Actor* actor, const char* frameKey);
 #endif

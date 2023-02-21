@@ -1,5 +1,6 @@
 # include "actors.h"
 # include "worlds.h"
+# include "frames.h"
 # include "sprites.h"
 # include "utlist.h"
 # include "uthash.h"
@@ -89,28 +90,16 @@ void _draw_background(World* world, SDL_Renderer* rend) {
   }
 }
 
-void draw_world(World* world, SDL_Renderer* rend) {
+void draw_world(World* world, SDL_Renderer* rend, const char* frameKey) {
   _draw_background(world, rend);
 
   struct ActorEntry *ae;
   DL_FOREACH(world->actors, ae) {
     Actor* a;
     a = get_actor(ae->actorKey);
-    if (!a) continue;
-
-    Sprite *s;
-    s = get_sprite_for_actor(ae->actorKey);
-    if (!s) continue;
-    SDL_Rect dest;
-    SDL_Rect src;
-    dest.x = a->ECB->x + s->offx;
-    dest.y = a->ECB->y + s->offy;
-    src.x = 0;
-    src.y = 0;
-
-    SDL_QueryTexture(s->image, NULL, NULL, &dest.w, &dest.h);
-    SDL_QueryTexture(s->image, NULL, NULL, &src.w, &src.h);
     
-    SDL_RenderCopy(rend, s->image, &src, &dest);
+    if (!a) continue;
+    if (in_frame(frameKey, a))
+      draw_actor(rend, a, frameKey);
   }
 };

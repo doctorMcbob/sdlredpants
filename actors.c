@@ -3,6 +3,7 @@
 # include <string.h>
 # include "uthash.h"
 # include "actors.h"
+# include "frames.h"
 
 Actor* actors = NULL;
 Actor* templates = NULL;
@@ -203,18 +204,18 @@ void update_actor(char* actorKey) {
   // TODO
 }
 
-Sprite* get_sprite_for_actor(char* actorKey) {
-  struct Actor *a;
-  a = get_actor(actorKey);
-  if (!a) return NULL;
+Sprite* get_sprite_for_actor(Actor* actor) {
+  if (actor->platform) {
+    return NULL;
+  }
   struct SpriteMap *sm;
-  sm = get_sprite_map(a->spritemapkey);
+  sm = get_sprite_map(actor->spritemapkey);
   if (!sm) return NULL;
   SpriteMapEntry *best, *sme;
   best = NULL;
   DL_FOREACH(sm->entries, sme) {
-    if (strcmp(a->state, sme->state) != 0) continue;
-    if (a->frame < sme->frame) continue;
+    if (strcmp(actor->state, sme->state) != 0) continue;
+    if (actor->frame < sme->frame) continue;
     if (best)
       if (sme->frame > best->frame) continue;
     best = sme;
@@ -225,5 +226,118 @@ Sprite* get_sprite_for_actor(char* actorKey) {
   Sprite *sprite;
   sprite = get_sprite(best->spriteKey);
   return sprite;
+}
+
+void _draw_platform(SDL_Renderer* rend, Actor* actor) {
+  struct SpriteMap *sm;
+  sm = get_sprite_map(actor->spritemapkey);
+  if (!sm) return;
+
+  char key00[32],key01[32],key02[32],
+       key10[32],key11[32],key12[32],
+       key20[32],key21[32],key22[32];
+
+  sprintf("%s%i%i", actor->state, 0, 0, key00);
+  sprintf("%s%i%i", actor->state, 0, 1, key01);
+  sprintf("%s%i%i", actor->state, 0, 2, key02);
+  sprintf("%s%i%i", actor->state, 1, 0, key10);
+  sprintf("%s%i%i", actor->state, 1, 1, key11);
+  sprintf("%s%i%i", actor->state, 1, 2, key12);
+  sprintf("%s%i%i", actor->state, 2, 0, key20);
+  sprintf("%s%i%i", actor->state, 2, 1, key21);
+  sprintf("%s%i%i", actor->state, 2, 2, key22);
+  
+  Sprite *s00, *s01, *s02,
+         *s10, *s11, *s12,
+         *s20, *s21, *s22;
+
+  SpriteMapEntry *sme;
+  DL_FOREACH(sm->entries, sme) {
+    if (strcmp(sme->state, key00) == 0) {
+      s00 = get_sprite(sme->spriteKey);
+      continue;
+    }
+    if (strcmp(sme->state, key01) == 0) {
+      s01 = get_sprite(sme->spriteKey);
+      continue;
+    }
+    if (strcmp(sme->state, key02) == 0) {
+      s02 = get_sprite(sme->spriteKey);
+      continue;
+    }
+    if (strcmp(sme->state, key00) == 0) {
+      s10 = get_sprite(sme->spriteKey);
+      continue;
+    }
+    if (strcmp(sme->state, key01) == 0) {
+      s11 = get_sprite(sme->spriteKey);
+      continue;
+    }
+    if (strcmp(sme->state, key02) == 0) {
+      s12 = get_sprite(sme->spriteKey);
+      continue;
+    }
+    if (strcmp(sme->state, key20) == 0) {
+      s20 = get_sprite(sme->spriteKey);
+      continue;
+    }
+    if (strcmp(sme->state, key21) == 0) {
+      s21 = get_sprite(sme->spriteKey);
+      continue;
+    }
+    if (strcmp(sme->state, key22) == 0) {
+      s22 = get_sprite(sme->spriteKey);
+    }
+  }
+
+  for (int y=0; y < actor->ECB->h / 32; y++) {
+    for (int x=0; x < actor->ECB->w / 32; x++) {
+      Sprite* img;
+      if      (x == 0                  && y == 0                 ) img = s00;
+      else if (x == actor->ECB->w/32-1 && y == 0                 ) img = s02;
+      else if (x == 0                  && y == actor->ECB->h/32-1) img = s20;
+      else if (x == actor->ECB->w/32-1 && y == actor->ECB->h/32-1) img = s22;
+      else if (x == 0                                            ) img = s10;
+      else if (x == actor->ECB->w/32-1                           ) img = s12;
+      else if (                           y == 0                 ) img = s01;
+      else if (                           y == actor->ECB->h/32-1) img = s21;
+      else img = s11;
+
+      SDL_Rect dest, src;
+      dest.x = actor->ECB->x + x*32;
+      dest.y = actor->ECB->y + y*32;
+      src.x = 0;
+      src.y = 0;
+      
+      SDL_QueryTexture(img->image, NULL, NULL, &dest.w, &dest.h);
+      SDL_QueryTexture(img->image, NULL, NULL, &src.w, &src.h);
+      
+      SDL_RenderCopy(rend, img->image, &src, &dest);
+    }
+  }
+}
+
+
+void draw_actor(SDL_Renderer* rend, Actor* actor, const char* frameKey) {
+  if (actor->platform) {
+    return _draw_platform(rend, actor);
+  }
+  Sprite *s;
+  s = get_sprite_for_actor(actor);
+  if (s == NULL) return;
+  Frame *f;
+  f = get_frame(frameKey);
+  if (f == NULL) return;
+  
+  SDL_Rect dest, src;
+  dest.x = actor->ECB->x + s->offx - f->scroll_x;
+  dest.y = actor->ECB->y + s->offy - f->scroll_y;
+  src.x = 0;
+  src.y = 0;
+  
+  SDL_QueryTexture(s->image, NULL, NULL, &dest.w, &dest.h);
+  SDL_QueryTexture(s->image, NULL, NULL, &src.w, &src.h);
+  
+  SDL_RenderCopy(rend, s->image, &src, &dest);
 }
 

@@ -1,5 +1,6 @@
 # include "uthash.h"
 # include <SDL2/SDL.h>
+
 # ifndef WORLDS_DEF
 #define WORLDS_DEF 1
 
@@ -28,6 +29,6 @@ void add_world(const char* name,
 World* get_world(const char* name);
 void add_actor_to_world(const char* worldkey, const char* actorname);
 void update_world(char* worldKey);
-void draw_world(World* world, SDL_Renderer* rend);
+void draw_world(World* world, SDL_Renderer* rend, const char* frameKey);
 # endif
 

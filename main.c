@@ -14,6 +14,7 @@ I will be using uthash.h as my dictionary implementation
 # include "inputs.h"
 # include "sprites.h"
 # include "worlds.h"
+# include "frames.h"
 # include <string.h>
 # include <stdio.h>
 
@@ -68,18 +69,12 @@ int main (void)
   InputState* testInputs;
   testInputs = get_input_state("TEST");
 
-  World* world;
-  world = get_world("root");
-  if (!world) {
-    printf("Could not find world root");
-  }
+  add_frame("MAIN", get_world("root"), NULL, 0, 0, W/2, H);
+  
   while (input_update() != -1) {
     SDL_RenderClear(rend);
-    
-    if (world) {
-      draw_world(world, rend);
-    }
 
+    draw_frame(rend, "MAIN");
     
     SDL_RenderPresent(rend);
     SDL_Delay(1000/120);
