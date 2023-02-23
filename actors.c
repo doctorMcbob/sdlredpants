@@ -201,7 +201,7 @@ void add_template_from_actorkey(char* actorKey) {
 }
 
 void update_actor(char* actorKey) {
-  // TODO
+  // TODO tee hee
 }
 
 Sprite* get_sprite_for_actor(Actor* actor) {
@@ -229,6 +229,7 @@ Sprite* get_sprite_for_actor(Actor* actor) {
 }
 
 void _draw_platform(SDL_Renderer* rend, Actor* actor) {
+  // currently the grossest
   struct SpriteMap *sm;
   sm = get_sprite_map(actor->spritemapkey);
   if (!sm) return;
@@ -336,7 +337,8 @@ void draw_actor(SDL_Renderer* rend, Actor* actor, const char* frameKey) {
   src.y = 0;
   
   SDL_QueryTexture(s->image, NULL, NULL, &dest.w, &dest.h);
-  SDL_QueryTexture(s->image, NULL, NULL, &src.w, &src.h);
+  src.w = dest.w;
+  src.h = dest.h;
   
   SDL_RenderCopy(rend, s->image, &src, &dest);
 }

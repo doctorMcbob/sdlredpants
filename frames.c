@@ -74,3 +74,27 @@ void draw_frame(SDL_Renderer* rend, const char* name) {
   
   SDL_DestroyTexture(frame_buffer);
 }
+
+void update_frame(const char* frameKey) {
+  Frame* f = get_frame(frameKey);
+  if (f->focus != NULL) {
+    f->scroll_x = f->focus->ECB->x + f->focus->ECB->w / 2 - f->rect->w / 2;
+    f->scroll_y = f->focus->ECB->y + f->focus->ECB->h / 2 - f->rect->h / 2;
+  }
+
+  if (f->bound_left && f->rect->x < f->left_bind) {
+    f->rect->x = f->left_bind;
+  }
+
+  if (f->bound_top && f->rect->y < f->top_bind) {
+    f->rect->y = f->top_bind;
+  }
+
+  if (f->bound_right && f->rect->x + f->rect->w > f->right_bind) {
+    f->rect->x = f->right_bind - f->rect->w;
+  }
+
+  if (f->bound_bottom && f->rect->y + f->rect->h < f->bottom_bind) {
+    f->rect->y = f->bottom_bind - f->rect->h;
+  }
+}

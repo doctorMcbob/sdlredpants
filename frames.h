@@ -28,4 +28,5 @@ void add_frame(const char* name, World* world, Actor* focus, int x, int y, int w
 Frame* get_frame(const char* name);
 int in_frame(const char* frameKey, Actor* actor);
 void draw_frame(SDL_Renderer* rend, const char* name);
+void update_frame(const char* frameKey);
 #endif

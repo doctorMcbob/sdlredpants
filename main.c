@@ -70,11 +70,13 @@ int main (void)
   testInputs = get_input_state("TEST");
 
   add_frame("MAIN", get_world("root"), NULL, 0, 0, W/2, H);
+  add_frame("MAIN2", get_world("redpantshouseroot"), NULL, W/2, 0, W/2, H);
   
   while (input_update() != -1) {
     SDL_RenderClear(rend);
 
     draw_frame(rend, "MAIN");
+    draw_frame(rend, "MAIN2");
     
     SDL_RenderPresent(rend);
     SDL_Delay(1000/120);
