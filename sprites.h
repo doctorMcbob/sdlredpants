@@ -24,7 +24,7 @@ typedef struct SpriteMapEntry {
 
 typedef struct SpriteMap {
   char name[32];
-  SpriteMapEntry* entries;
+  struct SpriteMapEntry* entries;
   UT_hash_handle hh;
 } SpriteMap;
 

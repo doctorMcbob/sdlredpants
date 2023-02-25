@@ -24,7 +24,7 @@ for filename in SPRITESHEETS.SPRITESHEETS.keys():
 
 
     spritesheets_dot_c += f"""
-    load_spritesheet(rend, "img/{filename}", {name}names, {name}xs, {name}ys, {name}ws, {name}hs, {length});
+    load_spritesheet(rend, "img/{filename}", {name}names, {name}xs, {name}ys, {name}ws, {name}hs, {length})\n;
 """
 
 keys = set()

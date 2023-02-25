@@ -36,16 +36,15 @@ SpriteMap* get_sprite_map(const char* name) {
   HASH_FIND_STR(spritemaps, name, sm);
   if (sm) {
     return sm;
-  } else {
-    return NULL;
   }
+  return NULL;
 }
 
 void add_to_sprite_map(const char* name, const char* state, int frame, const char* spriteKey) {
   struct SpriteMap *sm;
   sm = get_sprite_map(name);
   if (sm == NULL) {
-    printf("No sprite map %s", name);
+    printf("No sprite map %s\n", name);
     return;
   }
   

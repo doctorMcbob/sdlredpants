@@ -28,6 +28,7 @@ I will be using uthash.h as my dictionary implementation
 void spritesheet_load(SDL_Renderer* rend);
 void actor_load();
 void world_load();
+void boxes_load();
 
 int main (void)
 {
@@ -64,6 +65,7 @@ int main (void)
   spritesheet_load(rend);
   actor_load();
   world_load();
+  boxes_load();
   
   add_input_state("TEST", NULL);
   InputState* testInputs;
