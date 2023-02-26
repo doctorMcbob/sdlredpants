@@ -29,7 +29,7 @@ void spritesheet_load(SDL_Renderer* rend);
 void actor_load();
 void world_load();
 void boxes_load();
-
+void scripts_load();
 int main (void)
 {
   if (SDL_Init(SDL_INIT_VIDEO) != 0)
@@ -66,6 +66,7 @@ int main (void)
   actor_load();
   world_load();
   boxes_load();
+  scripts_load();
   
   add_input_state("TEST", NULL);
   InputState* testInputs;

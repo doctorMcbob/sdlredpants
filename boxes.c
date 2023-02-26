@@ -34,7 +34,7 @@ void add_to_hitbox_map(const char* name,
   }
 
   struct BoxMapEntry* bme;
-  bme = malloc(sizeof(BoxMapEntry));
+  bme = malloc(sizeof(BoxMapEntry) + count * sizeof(SDL_Rect));
   if (bme == NULL) {
     exit(-1);
   }

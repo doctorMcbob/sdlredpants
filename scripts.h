@@ -141,4 +141,13 @@ typedef struct ScriptMap {
   struct ScriptMapEntry* entries;
   UT_hash_handle hh;
 } ScriptMap;
+void add_script(int scriptKey);
+Script* get_script(int scriptKey);
+void add_statement_to_script(int scriptKey, Statement* statement);
+Statement* new_statement(int verb);
+SyntaxNode* new_syntax_node(int type);
+void add_node_to_statement(Statement* statement, SyntaxNode* node);
+void add_script_map(const char* name);
+ScriptMap* get_script_map(const char* name);
+void add_script_to_script_map(const char* name, char* state, int frame, int scriptKey);
 #endif

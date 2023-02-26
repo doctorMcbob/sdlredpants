@@ -76,3 +76,18 @@ ScriptMap* get_script_map(const char* name) {
     return scm;
   return NULL;
 }
+
+void add_script_to_script_map(const char* name, char* state, int frame, int scriptKey) {
+  struct ScriptMap* scm = get_script_map(name);
+  if (!scm) {
+    printf("No ScriptMap %s\n", name);
+    return;
+  }
+  struct ScriptMapEntry* sme;
+  sme = malloc(sizeof(ScriptMapEntry));
+  strcpy(sme->state, state);
+  sme->frame = frame;
+  sme->scriptKey = scriptKey;
+
+  DL_APPEND(scm->entries, sme);
+}
