@@ -112,7 +112,7 @@ for mapKey in SCRIPTS.keys():
     script_data_dot_c += f"    add_script_map(\"{mapKey}\");\n"
     for key in SCRIPTS[mapKey]:
         state, frame = key.split(":") if ":" in key else (key, "0")
-        script_data_dot_c += f"""    add_script({scriptKey});"""
+        script_data_dot_c += f"\n    add_script({scriptKey});\n"
         script_data_dot_c += f"    add_script_to_script_map(\"{mapKey}\", \"{state}\", {frame}, {scriptKey});\n"
         for i, statement in enumerate(SCRIPTS[mapKey][key]):
             if not statement: continue
@@ -125,8 +125,7 @@ for mapKey in SCRIPTS.keys():
             script_data_dot_c += f"""
     //{verb} {statement}
     Statement* s{scriptKey}_{i} = new_statement({VERBS[verb]});
-    add_statement_to_script({scriptKey}, s{scriptKey}_{i});
-    """
+    add_statement_to_script({scriptKey}, s{scriptKey}_{i});\n"""
             VERBCOUNT[verb] += 1
             for j, token in enumerate(statement[1:]):
                 if token in OPERATORS:
@@ -135,8 +134,7 @@ for mapKey in SCRIPTS.keys():
     sn{scriptKey}_{i}_{j}->data.i = {OPERATORS[token]};\n"""
                 elif token in LITERAL_KEYWORDS:
                     script_data_dot_c += f"""
-    SyntaxNode* sn{scriptKey}_{i}_{j} = new_syntax_node({LITERAL_KEYWORDS[token]});
-    """
+    SyntaxNode* sn{scriptKey}_{i}_{j} = new_syntax_node({LITERAL_KEYWORDS[token]});\n"""
                 else:
                     try:
                         int(token)
@@ -152,9 +150,10 @@ for mapKey in SCRIPTS.keys():
                         except ValueError:
                             script_data_dot_c += f"""
     SyntaxNode* sn{scriptKey}_{i}_{j} = new_syntax_node(STRING);
-    sn{scriptKey}_{i}_{j}->data.s = \"{token}\";\n"""
+    sn{scriptKey}_{i}_{j}->data.s = (char*)malloc({len(token) + 1});
+    strncpy(sn{scriptKey}_{i}_{j}->data.s, "{token}", {len(token) + 1});\n"""
                             pass
-                        
+
                 script_data_dot_c += f"    add_node_to_statement(s{scriptKey}_{i}, sn{scriptKey}_{i}_{j});\n"
         scriptKey += 1
 script_data_dot_c += "}\n"

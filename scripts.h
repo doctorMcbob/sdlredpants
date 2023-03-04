@@ -15,7 +15,7 @@
 #define QWORLD 7
 #define QSONG 8
 #define QCOLLIDE 9
-#define NEWLIST 10
+#define LIST 10
 #define INP_A 11
 #define INP_B 12
 #define INP_X 13
@@ -115,6 +115,7 @@ typedef struct SyntaxNode {
     int i;
     float f;
     char *s;
+    struct SyntaxNode* list;
   } data;
   struct SyntaxNode* next;
   struct SyntaxNode* prev;
@@ -141,6 +142,7 @@ typedef struct ScriptMap {
   struct ScriptMapEntry* entries;
   UT_hash_handle hh;
 } ScriptMap;
+
 void add_script(int scriptKey);
 Script* get_script(int scriptKey);
 void add_statement_to_script(int scriptKey, Statement* statement);
@@ -150,4 +152,18 @@ void add_node_to_statement(Statement* statement, SyntaxNode* node);
 void add_script_map(const char* name);
 ScriptMap* get_script_map(const char* name);
 void add_script_to_script_map(const char* name, char* state, int frame, int scriptKey);
+void resolve_script(int scriptKey, char* worldKey, char* selfActorKey, char* relatedActorKey);
+void clean_statement(Statement* statement);
+void evaluate_literals(Statement* statement,
+		       char* worldKey,
+		       char* selfActorKey,
+		       char* relatedActorKey);
+void resolve_operators(Statement* statement,
+		       char* worldKey,
+		       char* selfActorKey,
+		       char* relatedActorKey);
+void resolve_verb(Statement* statement,
+		  char* worldKey,
+		  char* selfActorKey,
+		  char* relatedActorKey);
 #endif
