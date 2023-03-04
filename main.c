@@ -17,6 +17,8 @@ I will be using uthash.h as my dictionary implementation
 # include "frames.h"
 # include <string.h>
 # include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
 # include <SDL2/SDL.h>
 # include <SDL2/SDL_timer.h>
@@ -32,6 +34,7 @@ void boxes_load();
 void scripts_load();
 int main (void)
 {
+  srand(time(NULL));
   if (SDL_Init(SDL_INIT_VIDEO) != 0)
     {
       printf("Error initializing SDL2: %s\n", SDL_GetError());

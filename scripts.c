@@ -137,7 +137,10 @@ void evaluate_literals(Statement* statement,
       DL_APPEND(statement->params, new);
       break;
     case QRAND:
-      // put new SyntaxNode with type INT with random 0 or 1
+      new = malloc(sizeof(SyntaxNode));
+      new->type = INT;
+      new->data.i = rand() % 2;
+      DL_APPEND(statement->params, new);
       break;
     case QWORLD:
       // put new SyntaxNode with type STRING with the worldKey
