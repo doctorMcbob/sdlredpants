@@ -128,7 +128,26 @@ for mapKey in SCRIPTS.keys():
     add_statement_to_script({scriptKey}, s{scriptKey}_{i});\n"""
             VERBCOUNT[verb] += 1
             for j, token in enumerate(statement[1:]):
-                if token in OPERATORS:
+                if "." in token:
+                    script_data_dot_c += f"""
+    SyntaxNode* sn{scriptKey}_{i}_{j}_;\n"""
+                    words = token.split(".");
+                    first = words.pop(0);
+                    script_data_dot_c += f"""
+    sn{scriptKey}_{i}_{j}_ = new_syntax_node(STRING);
+    sn{scriptKey}_{i}_{j}_->data.s = (char*)malloc({len(first) + 1});
+    strncpy(sn{scriptKey}_{i}_{j}_->data.s, "{first}", {len(first) + 1});
+    add_node_to_statement(s{scriptKey}_{i}, sn{scriptKey}_{i}_{j}_);\n"""
+                    for word in words:
+                        script_data_dot_c += f"""
+    sn{scriptKey}_{i}_{j}_ = new_syntax_node(DOT);
+    add_node_to_statement(s{scriptKey}_{i}, sn{scriptKey}_{i}_{j}_);               
+    sn{scriptKey}_{i}_{j}_ = new_syntax_node(STRING);
+    sn{scriptKey}_{i}_{j}_->data.s = (char*)malloc({len(word) + 1});
+    strncpy(sn{scriptKey}_{i}_{j}_->data.s, "{word}", {len(word) + 1});
+    add_node_to_statement(s{scriptKey}_{i}, sn{scriptKey}_{i}_{j}_);\n"""
+                    continue
+                elif token in OPERATORS:
                     script_data_dot_c += f"""
     SyntaxNode* sn{scriptKey}_{i}_{j} = new_syntax_node(OPERATOR);
     sn{scriptKey}_{i}_{j}->data.i = {OPERATORS[token]};\n"""
@@ -152,7 +171,6 @@ for mapKey in SCRIPTS.keys():
     SyntaxNode* sn{scriptKey}_{i}_{j} = new_syntax_node(STRING);
     sn{scriptKey}_{i}_{j}->data.s = (char*)malloc({len(token) + 1});
     strncpy(sn{scriptKey}_{i}_{j}->data.s, "{token}", {len(token) + 1});\n"""
-                            pass
 
                 script_data_dot_c += f"    add_node_to_statement(s{scriptKey}_{i}, sn{scriptKey}_{i}_{j});\n"
         scriptKey += 1

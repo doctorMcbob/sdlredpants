@@ -1,9 +1,16 @@
 # include <SDL2/SDL.h>
 # include "uthash.h"
 # include "sprites.h"
+# include "scripts.h"
 
 #ifndef ACTORS_DEF
 # define ACTORS_DEF 1
+
+typedef struct Attribute {
+  char name[32];
+  SyntaxNode* value;
+  UT_hash_handle hh;
+} Attribute;
 
 typedef struct Actor {
   char name[32];
@@ -26,6 +33,8 @@ typedef struct Actor {
   int tangible;
   int physics;
   int updated;
+  // attribute hash
+  Attribute* attributes;
   UT_hash_handle hh;
 } Actor;
 
@@ -55,7 +64,8 @@ void copy_actor(Actor* copy,  Actor *a);
 void add_template(Actor* copy);
 void add_actor_from_templatekey(char* templateKey);
 void add_template_from_actorkey(char* actorKey);
-void update_actor(char* actorKey);
+void update_actor(char* actorKey, char* worldKey);
 Sprite* get_sprite_for_actor(Actor* actor);
 void draw_actor(SDL_Renderer* rend, Actor* actor, const char* frameKey);
+int get_script_for_actor(Actor* actor);
 #endif

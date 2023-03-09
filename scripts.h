@@ -15,7 +15,7 @@
 #define QWORLD 7
 #define QSONG 8
 #define QCOLLIDE 9
-#define LIST 10
+#define LIST  10
 #define INP_A 11
 #define INP_B 12
 #define INP_X 13
@@ -166,4 +166,6 @@ void resolve_verb(Statement* statement,
 		  char* worldKey,
 		  char* selfActorKey,
 		  char* relatedActorKey);
+void free_SyntaxNode(SyntaxNode* del);
+SyntaxNode* copy_SyntaxNode(SyntaxNode* orig);
 #endif

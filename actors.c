@@ -4,6 +4,7 @@
 # include "uthash.h"
 # include "actors.h"
 # include "frames.h"
+# include "scripts.h"
 
 Actor* actors = NULL;
 Actor* templates = NULL;
@@ -44,6 +45,7 @@ void add_actor(const char* name,
   if (!a) {
     exit(-1);
   }
+  a->attributes = NULL;
   SDL_Rect *ecb;
   ecb = malloc(sizeof(SDL_Rect));
   if (!ecb) {
@@ -200,8 +202,31 @@ void add_template_from_actorkey(char* actorKey) {
   HASH_ADD_STR(templates, name, a);
 }
 
-void update_actor(char* actorKey) {
-  // TODO tee hee
+void update_actor(char* actorKey, char* worldKey) {
+  Actor *actor = get_actor(actorKey);
+  if (!actor) return;
+  int scriptKey = get_script_for_actor(actor);
+  if (scriptKey != -1) {
+    resolve_script(scriptKey, worldKey, actorKey, NULL);
+  }
+}
+
+int get_script_for_actor(Actor* actor) {
+  ScriptMap *sm = get_script_map(actor->scriptmapkey);
+  if (!sm) return -1;
+  ScriptMapEntry *best, *sme;
+  best = NULL;
+    DL_FOREACH(sm->entries, sme) {
+    if (strcmp(actor->state, sme->state) != 0) continue;
+    if (actor->frame < sme->frame) continue;
+    if (best)
+      if (sme->frame > best->frame) continue;
+    best = sme;
+  }
+  if (!best) {
+    return -1;
+  }
+  return best->scriptKey;
 }
 
 Sprite* get_sprite_for_actor(Actor* actor) {
@@ -223,9 +248,7 @@ Sprite* get_sprite_for_actor(Actor* actor) {
   if (!best) {
     return NULL;
   }
-  Sprite *sprite;
-  sprite = get_sprite(best->spriteKey);
-  return sprite;
+  return get_sprite(best->spriteKey);
 }
 
 void _draw_platform(SDL_Renderer* rend, Actor* actor) {

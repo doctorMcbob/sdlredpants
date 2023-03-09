@@ -71,21 +71,18 @@ int main (void)
   boxes_load();
   scripts_load();
   
-  add_input_state("TEST", NULL);
-  InputState* testInputs;
-  testInputs = get_input_state("TEST");
+  add_input_state("PLAYER1", NULL);
 
-  add_frame("MAIN", get_world("root"), NULL, 0, 0, W/2, H);
-  add_frame("MAIN2", get_world("redpantshouseroot"), NULL, W/2, 0, W/2, H);
+  add_frame("MAIN", get_world("root"), NULL, 0, 0, W, H);
   
   while (input_update() != -1) {
     SDL_RenderClear(rend);
 
+    update_world("root");
     draw_frame(rend, "MAIN");
-    draw_frame(rend, "MAIN2");
     
     SDL_RenderPresent(rend);
-    SDL_Delay(1000/120);
+    SDL_Delay(1000/30);
   }
 
   

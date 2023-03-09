@@ -1,11 +1,53 @@
 #include "utlist.h"
 #include "uthash.h"
 #include "scripts.h"
+#include "actors.h"
 #include <SDL2/SDL.h>
 #include <stdlib.h>
+#include <math.h>
 
 Script* scripts = NULL;
 ScriptMap* scriptmaps = NULL;
+
+void free_SyntaxNode(SyntaxNode* del) {
+  switch (del->type) {
+  case STRING:
+    free(del->data.s);
+    break;
+  case LIST:
+    {
+      SyntaxNode *sn, *tmp; 
+      DL_FOREACH_SAFE(del->data.list, sn, tmp) {
+	DL_DELETE(del->data.list, sn);
+	free_SyntaxNode(sn);
+      }
+      break;
+    }
+  }
+  free(del);
+}
+
+SyntaxNode* copy_SyntaxNode(SyntaxNode* orig) {
+  SyntaxNode *copy = malloc(sizeof(SyntaxNode));
+  copy->type = orig->type;
+  switch (orig->type) {
+  case STRING: {
+    copy->data.s = malloc(sizeof(orig->data.s));
+    strcpy(copy->data.s, orig->data.s);
+    break;
+  }
+  case LIST: {
+    SyntaxNode *sn;
+    copy->data.list = NULL;
+    DL_FOREACH(orig->data.list, sn) {
+      SyntaxNode* cpy = copy_SyntaxNode(sn);
+      DL_APPEND(copy->data.list, cpy);
+    }
+    break;
+  }
+  }
+  return copy;
+}
 
 void add_script(int scriptKey) {
   struct Script* sc;
@@ -54,6 +96,13 @@ SyntaxNode* new_syntax_node(int type) {
   sn->type = type;
   return sn;
 };
+
+SyntaxNode* _get_last(SyntaxNode *head) {
+  SyntaxNode *curr = head;
+  while (curr != NULL && curr->next != NULL)
+    curr = curr->next;
+  return curr;
+}
 
 void add_node_to_statement(Statement* statement, SyntaxNode* node) {
   DL_APPEND(statement->script, node);
@@ -136,6 +185,89 @@ void evaluate_literals(Statement* statement,
       new->data = sn->data;
       DL_APPEND(statement->params, new);
       break;
+    case DOT: {
+      SyntaxNode* parameter = _get_last(statement->params);
+      if (parameter == NULL || sn->next == NULL) {
+	printf("actor %s: Missing parameter for dot notation on verb %i\n", selfActorKey, statement->verb);
+	break;
+      }
+      if (parameter->type != STRING) {
+	printf("actor %s: Cannot use dot notation on type %i\n", selfActorKey, parameter->type);
+	break;
+      }
+      if (sn->next->type != STRING) {
+	printf("actor %s: Cannot use dot notation with type %i\n", selfActorKey, sn->next->type);
+	break;
+      }
+      char *actorKey = parameter->data.s;
+      if (strcmp(actorKey, "self") == 0) actorKey = selfActorKey;
+      else if (strcmp(actorKey, "related") == 0) actorKey= relatedActorKey;
+      Actor *actor = get_actor(actorKey);
+      if (!actor) {
+	printf("Could not find actor \n");
+	break;
+      }
+      // check special (top level actor attributes, not in hash)
+      // x, y, w, h,
+      // left, top, right, bottom,
+      // name, state, frame,
+      // x_vel, y_vel, direction, rotation,
+      // platform, tangible, physics
+      /**
+       Quick note because i know ill forget, 
+       right now: self.frame is (self) (.) (frame)
+       0) (self) gets added to params
+       1) (.) removes (self) from params, and checks (frame) of self
+       2) (value of self.frame) gets put on params
+       3 TODO !!) skip over the laready leveraged (frame)
+       this needs to happen in each of these cases below as well as at the bottom of case DOT: 
+      */
+      
+      if (strcmp(sn->next->data.s, "x") == 0) {
+	new = new_syntax_node(INT);
+	new->data.i = actor->ECB->x;
+	DL_DELETE(statement->params, parameter);
+	free(parameter);
+	DL_APPEND(statement->params, new);
+	break;
+      }
+      if (strcmp(sn->next->data.s, "y") == 0) {
+	new = new_syntax_node(INT);
+	new->data.i = actor->ECB->y;
+	DL_DELETE(statement->params, parameter);
+	free(parameter);
+	DL_APPEND(statement->params, new);
+	break;
+      }
+      if (strcmp(sn->next->data.s, "w") == 0) {
+	new = new_syntax_node(INT);
+	new->data.i = actor->ECB->w;
+	DL_DELETE(statement->params, parameter);
+	free(parameter);
+	DL_APPEND(statement->params, new);
+	break;
+      }
+      if (strcmp(sn->next->data.s, "h") == 0) {
+	new = new_syntax_node(INT);
+	new->data.i = actor->ECB->h;
+	DL_DELETE(statement->params, parameter);
+	free(parameter);
+	DL_APPEND(statement->params, new);
+	break;
+      }
+      
+      Attribute *attribute = NULL;
+      HASH_FIND_STR(actor->attributes, sn->next->data.s, attribute);
+      if (attribute == NULL) {
+	printf("actor %s: could not find attribute of %s, %s\n", selfActorKey, parameter->data.s, sn->next->data.s);
+	break;
+      }
+      new = copy_SyntaxNode(attribute->value);
+      DL_DELETE(statement->params, parameter);
+      free(parameter);
+      DL_APPEND(statement->params, new);
+      break;
+    }
     case QRAND:
       new = malloc(sizeof(SyntaxNode));
       new->type = INT;
@@ -192,6 +324,8 @@ void evaluate_literals(Statement* statement,
 void normalize_left_right(SyntaxNode* left, SyntaxNode* right) {
   if (left->type == INT && right->type == STRING) {
     int i = left->data.i;
+    int len = snprintf(NULL, 0, "%i", i);
+    left->data.s = malloc(len+1);
     left->type = STRING;
     sprintf(left->data.s, "%i", i);
   }
@@ -205,6 +339,8 @@ void normalize_left_right(SyntaxNode* left, SyntaxNode* right) {
   if (left->type == STRING && right->type == INT) {
     int i = right->data.i;
     right->type = STRING;
+    int len = snprintf(NULL, 0, "%i", i);
+    right->data.s = malloc(len+1);
     sprintf(right->data.s, "%i", i);
   }
 
@@ -261,33 +397,108 @@ void resolve_operators(Statement* statement,
       break;
     case MINUS:
       if (sn->prev == NULL || sn->next == NULL) break;
-      normalize_left_right(sn->prev, sn->next);
-      // todo
+      if (sn->prev->type == INT && sn->next->type == INT) {
+	sn->type = INT;
+	sn->data.i = sn->prev->data.i - sn->next->data.i;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+	sn->type = FLOAT;
+	sn->data.f = sn->prev->data.i - sn->next->data.f;
+      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+	sn->type = FLOAT;
+	sn->data.f = sn->prev->data.f - sn->next->data.i;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+	sn->type = FLOAT;
+	sn->data.f = sn->prev->data.f - sn->next->data.f;
+      } else {
+	printf("Could not - types: %i, %i\n", sn->prev->type, sn->next->type);
+      }
+      pop_nbrs(statement->params, sn);
       break;
     case MULT:
       if (sn->prev == NULL || sn->next == NULL) break;
-      normalize_left_right(sn->prev, sn->next);
-      // todo
+      if (sn->prev->type == INT && sn->next->type == INT) {
+	sn->type = INT;
+	sn->data.i = sn->prev->data.i * sn->next->data.i;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+	sn->type = FLOAT;
+	sn->data.f = sn->prev->data.i * sn->next->data.f;
+      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+	sn->type = FLOAT;
+	sn->data.f = sn->prev->data.f * sn->next->data.i;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+	sn->type = FLOAT;
+	sn->data.f = sn->prev->data.f * sn->next->data.f;
+      } else {
+	printf("Could not * types: %i, %i\n", sn->prev->type, sn->next->type);
+      }
+      pop_nbrs(statement->params, sn);
       break;
     case FLOORDIV:
       if (sn->prev == NULL || sn->next == NULL) break;
-      normalize_left_right(sn->prev, sn->next);
-      // todo
+      sn->type = INT;
+      if (sn->prev->type == INT && sn->next->type == INT) {
+	sn->data.i = sn->prev->data.i / sn->next->data.i;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+	sn->data.i = sn->prev->data.i / (int)sn->next->data.f;
+      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+	sn->data.i = (int)sn->prev->data.f / sn->next->data.i;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+	sn->data.i = (int)sn->prev->data.f / (int)sn->next->data.f;
+      } else {
+	printf("Could not // types: %i, %i\n", sn->prev->type, sn->next->type);
+      }
+      pop_nbrs(statement->params, sn);
       break;
     case FLOATDIV:
       if (sn->prev == NULL || sn->next == NULL) break;
-      normalize_left_right(sn->prev, sn->next);
-      // todo
+      sn->type = FLOAT;
+      if (sn->prev->type == INT && sn->next->type == INT) {
+	sn->data.f = sn->prev->data.i / (float)sn->next->data.i;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+	sn->data.f = sn->prev->data.i / sn->next->data.f;
+      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+	sn->data.f = sn->prev->data.f / sn->next->data.i;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+	sn->data.f = sn->prev->data.f / sn->next->data.f;
+      } else {
+	printf("Could not / types: %i, %i\n", sn->prev->type, sn->next->type);
+      }
+      pop_nbrs(statement->params, sn);
       break;
     case MOD:
       if (sn->prev == NULL || sn->next == NULL) break;
-      normalize_left_right(sn->prev, sn->next);
-      // todo
+      sn->type = INT;
+      if (sn->prev->type == INT && sn->next->type == INT) {
+	sn->data.i = sn->prev->data.i % sn->next->data.i;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+	sn->data.f = sn->prev->data.i % (int)sn->next->data.f;
+      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+	sn->data.f = (int)sn->prev->data.f % sn->next->data.i;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+	sn->data.f = (int)sn->prev->data.f % (int)sn->next->data.f;
+      } else {
+	printf("Could not %% types: %i, %i\n", sn->prev->type, sn->next->type);
+      }
+      pop_nbrs(statement->params, sn);
       break;
     case POW:
       if (sn->prev == NULL || sn->next == NULL) break;
-      normalize_left_right(sn->prev, sn->next);
-      // todo
+      if (sn->prev->type == INT && sn->next->type == INT) {
+	sn->type = INT;
+	sn->data.i = pow(sn->prev->data.i,  sn->next->data.i);
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+	sn->type = FLOAT;
+	sn->data.f = pow(sn->prev->data.i, sn->next->data.f);
+      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+	sn->type = FLOAT;
+	sn->data.f = pow(sn->prev->data.f, sn->next->data.i);
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+	sn->type = FLOAT;
+	sn->data.f = pow(sn->prev->data.f, sn->next->data.f);
+      } else {
+	printf("Could not ** types: %i, %i\n", sn->prev->type, sn->next->type);
+      }
+      pop_nbrs(statement->params, sn);
       break;
     case EQUALS:
       break;
@@ -422,3 +633,4 @@ void resolve_verb(Statement* statement,
     break;
   }
 }
+
