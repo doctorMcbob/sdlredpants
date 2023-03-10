@@ -4,7 +4,7 @@
 CC := clang
 
 # set compiler flags #! REMOVE -g !# 
-SDL_FLAGS := `sdl2-config --libs --cflags`
+SDL_FLAGS := `sdl2-config --libs --cflags -g`
 CFLAGS := $(SDL_FLAGS) -ggdb3 -O0 --std=c99 -Wall
 
 # add headers here

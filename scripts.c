@@ -208,6 +208,7 @@ void evaluate_literals(Statement* statement,
       Actor *actor = get_actor(actorKey);
       if (!actor) {
 	printf("Could not find actor \n");
+	skipCauseDot = 1;
 	break;
       }
       // check special (top level actor attributes, not in hash)
