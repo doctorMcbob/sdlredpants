@@ -16,11 +16,12 @@ void free_SyntaxNode(SyntaxNode* del) {
     break;
   case LIST:
     {
-      SyntaxNode *sn, *tmp; 
+      SyntaxNode *sn, *tmp;
       DL_FOREACH_SAFE(del->data.list, sn, tmp) {
 	DL_DELETE(del->data.list, sn);
 	free_SyntaxNode(sn);
       }
+
       break;
     }
   }
@@ -32,7 +33,7 @@ SyntaxNode* copy_SyntaxNode(SyntaxNode* orig) {
   copy->type = orig->type;
   switch (orig->type) {
   case STRING: {
-    copy->data.s = malloc(sizeof(orig->data.s));
+    copy->data.s = malloc(strlen(orig->data.s)+1);
     strcpy(copy->data.s, orig->data.s);
     break;
   }
@@ -161,9 +162,8 @@ void clean_statement(Statement* statement) {
   SyntaxNode *sn, *tmp;
   DL_FOREACH_SAFE(statement->params, sn, tmp) {
     DL_DELETE(statement->params, sn);
-    free(sn);
+    free_SyntaxNode(sn);
   }
-
   statement->params = NULL;
 }
 
@@ -171,8 +171,13 @@ void evaluate_literals(Statement* statement,
 		       char* worldKey,
 		       char* selfActorKey,
 		       char* relatedActorKey) {
-  SyntaxNode *sn, *tmp;
-  DL_FOREACH_SAFE(statement->script, sn, tmp) {
+  SyntaxNode *sn;
+  int skipCauseDot = 0;
+  DL_FOREACH(statement->script, sn) {
+    if (skipCauseDot) {
+      skipCauseDot = 0;
+      continue;
+    }
     SyntaxNode *new;
     switch (sn->type) {
     case NONE:
@@ -180,9 +185,7 @@ void evaluate_literals(Statement* statement,
     case INT:
     case STRING:
     case OPERATOR:
-      new = malloc(sizeof(SyntaxNode));
-      new->type = sn->type;
-      new->data = sn->data;
+      new = copy_SyntaxNode(sn);
       DL_APPEND(statement->params, new);
       break;
     case DOT: {
@@ -212,60 +215,184 @@ void evaluate_literals(Statement* statement,
       // left, top, right, bottom,
       // name, state, frame,
       // x_vel, y_vel, direction, rotation,
-      // platform, tangible, physics
-      /**
-       Quick note because i know ill forget, 
-       right now: self.frame is (self) (.) (frame)
-       0) (self) gets added to params
-       1) (.) removes (self) from params, and checks (frame) of self
-       2) (value of self.frame) gets put on params
-       3 TODO !!) skip over the laready leveraged (frame)
-       this needs to happen in each of these cases below as well as at the bottom of case DOT: 
-      */
-      
+      // platform, tangible, physics      
       if (strcmp(sn->next->data.s, "x") == 0) {
 	new = new_syntax_node(INT);
 	new->data.i = actor->ECB->x;
 	DL_DELETE(statement->params, parameter);
-	free(parameter);
+	free_SyntaxNode(parameter);
 	DL_APPEND(statement->params, new);
+	skipCauseDot = 1;
 	break;
       }
       if (strcmp(sn->next->data.s, "y") == 0) {
 	new = new_syntax_node(INT);
 	new->data.i = actor->ECB->y;
 	DL_DELETE(statement->params, parameter);
-	free(parameter);
+	free_SyntaxNode(parameter);
 	DL_APPEND(statement->params, new);
+	skipCauseDot = 1;
 	break;
       }
       if (strcmp(sn->next->data.s, "w") == 0) {
 	new = new_syntax_node(INT);
 	new->data.i = actor->ECB->w;
 	DL_DELETE(statement->params, parameter);
-	free(parameter);
+	free_SyntaxNode(parameter);
 	DL_APPEND(statement->params, new);
+	skipCauseDot = 1;
 	break;
       }
       if (strcmp(sn->next->data.s, "h") == 0) {
 	new = new_syntax_node(INT);
 	new->data.i = actor->ECB->h;
 	DL_DELETE(statement->params, parameter);
-	free(parameter);
+	free_SyntaxNode(parameter);
 	DL_APPEND(statement->params, new);
+	skipCauseDot = 1;
 	break;
       }
-      
+      if (strcmp(sn->next->data.s, "top") == 0) {
+	new = new_syntax_node(INT);
+	new->data.i = actor->ECB->y;
+	DL_DELETE(statement->params, parameter);
+	free_SyntaxNode(parameter);
+	DL_APPEND(statement->params, new);
+	skipCauseDot = 1;
+	break;
+      }
+      if (strcmp(sn->next->data.s, "left") == 0) {
+	new = new_syntax_node(INT);
+	new->data.i = actor->ECB->x;
+	DL_DELETE(statement->params, parameter);
+	free_SyntaxNode(parameter);
+	DL_APPEND(statement->params, new);
+	skipCauseDot = 1;
+	break;
+      }
+      if (strcmp(sn->next->data.s, "bottom") == 0) {
+	new = new_syntax_node(INT);
+	new->data.i = actor->ECB->y + actor->ECB->h;
+	DL_DELETE(statement->params, parameter);
+	free_SyntaxNode(parameter);
+	DL_APPEND(statement->params, new);
+	skipCauseDot = 1;
+	break;
+      }
+      if (strcmp(sn->next->data.s, "right") == 0) {
+	new = new_syntax_node(INT);
+	new->data.i = actor->ECB->x + actor->ECB->w;
+	DL_DELETE(statement->params, parameter);
+	free_SyntaxNode(parameter);
+	DL_APPEND(statement->params, new);
+	skipCauseDot = 1;
+	break;
+      }
+      if (strcmp(sn->next->data.s, "name") == 0) {
+	new = new_syntax_node(STRING);
+	new->data.s = malloc(strlen(actor->name)+1);
+	strcpy(new->data.s, actor->name);
+	DL_DELETE(statement->params, parameter);
+	free_SyntaxNode(parameter);
+	DL_APPEND(statement->params, new);
+	skipCauseDot = 1;
+	break;
+      }
+      if (strcmp(sn->next->data.s, "state") == 0) {
+	new = new_syntax_node(STRING);
+	new->data.s = malloc(strlen(actor->state)+1);
+	strcpy(new->data.s, actor->state);
+	DL_DELETE(statement->params, parameter);
+	free_SyntaxNode(parameter);
+	DL_APPEND(statement->params, new);
+	skipCauseDot = 1;
+	break;
+      }
+      if (strcmp(sn->next->data.s, "frame") == 0) {
+	new = new_syntax_node(INT);
+	new->data.i = actor->frame;
+	DL_DELETE(statement->params, parameter);
+	free_SyntaxNode(parameter);
+	DL_APPEND(statement->params, new);
+	skipCauseDot = 1;
+	break;
+      }
+      if (strcmp(sn->next->data.s, "x_vel") == 0) {
+	new = new_syntax_node(INT);
+	new->data.i = actor->x_vel;
+	DL_DELETE(statement->params, parameter);
+	free_SyntaxNode(parameter);
+	DL_APPEND(statement->params, new);
+	skipCauseDot = 1;
+	break;
+      }
+      if (strcmp(sn->next->data.s, "y_vel") == 0) {
+	new = new_syntax_node(INT);
+	new->data.i = actor->y_vel;
+	DL_DELETE(statement->params, parameter);
+	free_SyntaxNode(parameter);
+	DL_APPEND(statement->params, new);
+	skipCauseDot = 1;
+	break;
+      }
+      if (strcmp(sn->next->data.s, "direction") == 0) {
+	new = new_syntax_node(INT);
+	new->data.i = actor->direction;
+	DL_DELETE(statement->params, parameter);
+	free_SyntaxNode(parameter);
+	DL_APPEND(statement->params, new);
+	skipCauseDot = 1;
+	break;
+      }
+      if (strcmp(sn->next->data.s, "rotation") == 0) {
+	new = new_syntax_node(INT);
+	new->data.i = actor->rotation;
+	DL_DELETE(statement->params, parameter);
+	free_SyntaxNode(parameter);
+	DL_APPEND(statement->params, new);
+	skipCauseDot = 1;
+	break;
+      }
+      if (strcmp(sn->next->data.s, "platform") == 0) {
+	new = new_syntax_node(INT);
+	new->data.i = actor->frame;
+	DL_DELETE(statement->params, parameter);
+	free_SyntaxNode(parameter);
+	DL_APPEND(statement->params, new);
+	skipCauseDot = 1;
+	break;
+      }
+      if (strcmp(sn->next->data.s, "tangible") == 0) {
+	new = new_syntax_node(INT);
+	new->data.i = actor->tangible;
+	DL_DELETE(statement->params, parameter);
+	free_SyntaxNode(parameter);
+	DL_APPEND(statement->params, new);
+	skipCauseDot = 1;
+	break;
+      }
+      if (strcmp(sn->next->data.s, "physics") == 0) {
+	new = new_syntax_node(INT);
+	new->data.i = actor->physics;
+	DL_DELETE(statement->params, parameter);
+	free_SyntaxNode(parameter);
+	DL_APPEND(statement->params, new);
+	skipCauseDot = 1;
+	break;
+      }
+
       Attribute *attribute = NULL;
       HASH_FIND_STR(actor->attributes, sn->next->data.s, attribute);
       if (attribute == NULL) {
 	printf("actor %s: could not find attribute of %s, %s\n", selfActorKey, parameter->data.s, sn->next->data.s);
 	break;
       }
+      
       new = copy_SyntaxNode(attribute->value);
       DL_DELETE(statement->params, parameter);
-      free(parameter);
+      free_SyntaxNode(parameter);
       DL_APPEND(statement->params, new);
+      skipCauseDot = 1;
       break;
     }
     case QRAND:
@@ -286,6 +413,9 @@ void evaluate_literals(Statement* statement,
       break;
     case LIST:
       // put new SyntaxNode with type LIST onto params, setting data.list to NULL for the head of a DL
+      new = new_syntax_node(LIST);
+      new->data.list = NULL;
+      DL_APPEND(statement->params, new);
       break;
     case INP_A:
       // put new SyntaxNode with type INT onto params, setting data.i to actorKey->_input_state A
@@ -355,10 +485,10 @@ void pop_nbrs(SyntaxNode* head, SyntaxNode* elm) {
   SyntaxNode *hold;
   hold = elm->next;
   DL_DELETE(head, hold);
-  free(hold);
+  free_SyntaxNode(hold);
   hold = elm->prev;
   DL_DELETE(head, hold);
-  free(hold);
+  free_SyntaxNode(hold);
 }
 
 void resolve_operators(Statement* statement,
@@ -374,7 +504,7 @@ void resolve_operators(Statement* statement,
       normalize_left_right(sn->prev, sn->next);
       if (sn->prev->type == STRING && sn->next->type == STRING) {
 	int len = strlen(sn->prev->data.s) + strlen(sn->next->data.s) + 1;
-	char* combined_str = (char*)malloc(len * sizeof(char));
+	char* combined_str = (char*)malloc(len * sizeof(char)+1);
 	snprintf(combined_str, len, "%s%s", sn->prev->data.s, sn->next->data.s);
 	sn->type = STRING;
 	sn->data.s = combined_str;
@@ -563,8 +693,278 @@ void resolve_verb(Statement* statement,
     break; // nice
   case RESET:
     break;
-  case SET:
+  case SET: {
+    SyntaxNode *actorKey,*attrKey, *value;
+    actorKey = statement->params;
+    if (actorKey == NULL) {
+      printf("Actor %s: Missing all parameters for set.\n", selfActorKey);
+      return;
+    }
+    if (actorKey->type != STRING) {
+      printf("Actor %s: first parameter for set must be string.\n", selfActorKey);
+      return;
+    }
+    attrKey = actorKey->next;
+    if (attrKey == NULL) {
+      printf("Actor %s: Missing attribute parameter for set.\n", selfActorKey);
+      return;
+    }
+    if (attrKey->type != STRING) {
+      printf("Actor %s: second parameter for set must be string.\n", selfActorKey);
+      return;
+    }
+    value = attrKey->next;
+    if (value == NULL) {
+      printf("Actor %s: Missing value parameter for set.\n", selfActorKey);
+      return;
+    }
+    Actor* actor;
+    if (strcmp(actorKey->data.s, "self") == 0) actor = get_actor(selfActorKey);
+    else if (strcmp(actorKey->data.s, "related") == 0) actor = get_actor(relatedActorKey);
+    else actor = get_actor(actorKey->data.s);
+    if (!actor) {
+      printf("Actor %s: Could not find actor %s for set\n", selfActorKey, actorKey->data.s);
+      return;
+    }
+
+    if (strcmp(attrKey->data.s, "x") == 0) {
+      if (value->type != INT && value->type != FLOAT) {
+	printf("Actor %s: Incorrect type for set x %i\n", selfActorKey, value->type);
+	return;
+      } else if (value->type == INT) {
+	actor->ECB->x = value->data.i;
+      } else {
+	actor->ECB->x = (int)value->data.f;
+      } 
+      break;
+    }
+
+    if (strcmp(attrKey->data.s, "y") == 0) {
+      if (value->type != INT && value->type != FLOAT) {
+	printf("Actor %s: Incorrect type for set y %i\n", selfActorKey, value->type);
+	return;
+      }
+      if (value->type == INT) {
+	actor->ECB->y = value->data.i;
+      } else {
+	actor->ECB->y = (int)value->data.f;
+      }
+      break;
+    }
+
+    if (strcmp(attrKey->data.s, "w") == 0) {
+      if (value->type != INT && value->type != FLOAT) {
+	printf("Actor %s: Incorrect type for set w %i\n", selfActorKey, value->type);
+	return;
+      }
+      if (value->type == INT) {
+	actor->ECB->w = value->data.i;
+      } else {
+	actor->ECB->w = (int)value->data.f;
+      }
+      break;
+    }
+
+    if (strcmp(attrKey->data.s, "h") == 0) {
+      if (value->type != INT && value->type != FLOAT) {
+	printf("Actor %s: Incorrect type for set h %i\n", selfActorKey, value->type);
+	return;
+      }
+      if (value->type == INT) {
+	actor->ECB->h = value->data.i;
+      } else {
+	actor->ECB->h = (int)value->data.f;
+      }
+      break;
+    }
+
+    if (strcmp(attrKey->data.s, "top") == 0) {
+      if (value->type != INT && value->type != FLOAT) {
+	printf("Actor %s: Incorrect type for special case set top %i\n", selfActorKey, value->type);
+	return;
+      }
+      if (value->type == INT) {
+	actor->ECB->y = value->data.i;
+      } else {
+	actor->ECB->y = (int)value->data.f;
+      }
+      break;
+    }
+
+    if (strcmp(attrKey->data.s, "left") == 0) {
+      if (value->type != INT && value->type != FLOAT) {
+	printf("Actor %s: Incorrect type for special case set x left %i\n", selfActorKey, value->type);
+	return;
+      }
+      if (value->type == INT) {
+	actor->ECB->x = value->data.i;
+      } else {
+	actor->ECB->x = (int)value->data.f;
+      }
+      break;
+    }
+
+    if (strcmp(attrKey->data.s, "bottom") == 0) {
+      if (value->type != INT && value->type != FLOAT) {
+	printf("Actor %s: Incorrect type for special case set bottom %i\n", selfActorKey, value->type);
+	return;
+      }
+      if (value->type == INT) {
+	actor->ECB->y = value->data.i - actor->ECB->h;
+      } else {
+	actor->ECB->y = (int)value->data.f - actor->ECB->h;
+      }
+      break;
+    }
+
+    if (strcmp(attrKey->data.s, "right") == 0) {
+      if (value->type != INT && value->type != FLOAT) {
+	printf("Actor %s: Incorrect type for special case set right %i\n", selfActorKey, value->type);
+	return;
+      }
+      if (value->type == INT) {
+	actor->ECB->x = value->data.i - actor->ECB->w;
+      } else {
+	actor->ECB->x = (int)value->data.f - actor->ECB->w;
+      }
+      break;
+    }
+
+    if (strcmp(attrKey->data.s, "name") == 0) {
+      if (value->type != STRING) {
+	printf("Actor %s: Incorrect type for special case set name %i\n", selfActorKey, value->type);
+	return;
+      }
+      strcpy(actor->name, value->data.s);
+      break;
+    }
+
+    if (strcmp(attrKey->data.s, "state") == 0) {
+      if (value->type != STRING) {
+	printf("Actor %s: Incorrect type for special case set state %i\n", selfActorKey, value->type);
+	return;
+      }
+      strcpy(actor->state, value->data.s);
+      break;
+    }
+
+    if (strcmp(attrKey->data.s, "frame") == 0) {
+      if (value->type != INT && value->type != FLOAT) {
+	printf("Actor %s: Incorrect type for special case set frame %i\n", selfActorKey, value->type);
+	return;
+      }
+      if (value->type == INT) {
+	actor->frame = value->data.i;
+      } else {
+	actor->frame = (int)value->data.f;
+      }
+      break;
+    }
+
+    if (strcmp(attrKey->data.s, "x_vel") == 0) {
+      if (value->type != INT && value->type != FLOAT) {
+	printf("Actor %s: Incorrect type for special case set x_vel %i\n", selfActorKey, value->type);
+	return;
+      }
+      if (value->type == INT) {
+	actor->x_vel = value->data.i;
+      } else {
+	actor->x_vel = value->data.f;
+      }
+      break;
+    }
+
+    if (strcmp(attrKey->data.s, "y_vel") == 0) {
+      if (value->type != INT && value->type != FLOAT) {
+	printf("Actor %s: Incorrect type for special case set y_vel %i\n", selfActorKey, value->type);
+	return;
+      }
+      if (value->type == INT) {
+	actor->y_vel = value->data.i;
+      } else {
+	actor->y_vel = (int)value->data.f;
+      }
+      break;
+    }
+
+    if (strcmp(attrKey->data.s, "direction") == 0) {
+      if (value->type != INT && value->type != FLOAT) {
+	printf("Actor %s: Incorrect type for special case set direction %i\n", selfActorKey, value->type);
+	return;
+      }
+      if (value->type == INT) {
+	actor->direction = value->data.i;
+      } else {
+	actor->direction = (int)value->data.f;
+      }
+      break;
+    }
+
+    if (strcmp(attrKey->data.s, "rotation") == 0) {
+      if (value->type != INT && value->type != FLOAT) {
+	printf("Actor %s: Incorrect type for special case set rotation %i\n", selfActorKey, value->type);
+	return;
+      }
+      if (value->type == INT) {
+	actor->rotation = value->data.i;
+      } else {
+	actor->rotation = (int)value->data.f;
+      }
+      break;
+    }
+
+    if (strcmp(attrKey->data.s, "platform") == 0) {
+      if (value->type != INT && value->type != FLOAT) {
+	printf("Actor %s: Incorrect type for special case set platform %i\n", selfActorKey, value->type);
+	return;
+      }
+      if (value->type == INT) {
+	actor->platform = value->data.i;
+      } else {
+	actor->platform = (int)value->data.f;
+      }
+      break;
+    }
+
+    if (strcmp(attrKey->data.s, "tangible") == 0) {
+      if (value->type != INT && value->type != FLOAT) {
+	printf("Actor %s: Incorrect type for special case set tangible %i\n", selfActorKey, value->type);
+	return;
+      }
+      if (value->type == INT) {
+	actor->tangible = value->data.i;
+      } else {
+	actor->tangible = (int)value->data.f;
+      }
+      break;
+    }
+
+    if (strcmp(attrKey->data.s, "physics") == 0) {
+      if (value->type != INT && value->type != FLOAT) {
+	printf("Actor %s: Incorrect type for special case set physics %i\n", selfActorKey, value->type);
+	return;
+      }
+      if (value->type == INT) {
+	actor->physics = value->data.i;
+      } else {
+	actor->physics = (int)value->data.f;
+      }
+      break;
+    }
+
+    Attribute *attr = NULL;
+    HASH_FIND_STR(actor->attributes, attrKey->data.s, attr);
+    if (attr == NULL) {
+      attr = malloc(sizeof(Attribute));
+      strcpy(attr->name, attrKey->data.s);
+      attr->value = copy_SyntaxNode(value);
+      HASH_ADD_STR(actor->attributes, name, attr);      
+    } else {
+      free_SyntaxNode(attr->value);
+      attr->value = copy_SyntaxNode(value);
+    }
     break;
+  }
   case REASSIGN:
     break;
   case IF:

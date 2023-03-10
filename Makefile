@@ -3,7 +3,7 @@
 # set the compiler
 CC := clang
 
-# set compiler flags
+# set compiler flags #! REMOVE -g !# 
 SDL_FLAGS := `sdl2-config --libs --cflags`
 CFLAGS := $(SDL_FLAGS) -ggdb3 -O0 --std=c99 -Wall
 

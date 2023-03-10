@@ -261,20 +261,20 @@ void _draw_platform(SDL_Renderer* rend, Actor* actor) {
        key10[32],key11[32],key12[32],
        key20[32],key21[32],key22[32];
 
-  sprintf("%s%i%i", actor->state, 0, 0, key00);
-  sprintf("%s%i%i", actor->state, 0, 1, key01);
-  sprintf("%s%i%i", actor->state, 0, 2, key02);
-  sprintf("%s%i%i", actor->state, 1, 0, key10);
-  sprintf("%s%i%i", actor->state, 1, 1, key11);
-  sprintf("%s%i%i", actor->state, 1, 2, key12);
-  sprintf("%s%i%i", actor->state, 2, 0, key20);
-  sprintf("%s%i%i", actor->state, 2, 1, key21);
-  sprintf("%s%i%i", actor->state, 2, 2, key22);
+  sprintf(key00, "%s%i%i", actor->state, 0, 0);
+  sprintf(key01, "%s%i%i", actor->state, 0, 1);
+  sprintf(key02, "%s%i%i", actor->state, 0, 2);
+  sprintf(key10, "%s%i%i", actor->state, 1, 0);
+  sprintf(key11, "%s%i%i", actor->state, 1, 1);
+  sprintf(key12, "%s%i%i", actor->state, 1, 2);
+  sprintf(key20, "%s%i%i", actor->state, 2, 0);
+  sprintf(key21, "%s%i%i", actor->state, 2, 1);
+  sprintf(key22, "%s%i%i", actor->state, 2, 2);
   
   Sprite *s00, *s01, *s02,
          *s10, *s11, *s12,
          *s20, *s21, *s22;
-
+  
   SpriteMapEntry *sme;
   DL_FOREACH(sm->entries, sme) {
     if (strcmp(sme->state, key00) == 0) {
@@ -289,15 +289,15 @@ void _draw_platform(SDL_Renderer* rend, Actor* actor) {
       s02 = get_sprite(sme->spriteKey);
       continue;
     }
-    if (strcmp(sme->state, key00) == 0) {
+    if (strcmp(sme->state, key10) == 0) {
       s10 = get_sprite(sme->spriteKey);
       continue;
     }
-    if (strcmp(sme->state, key01) == 0) {
+    if (strcmp(sme->state, key11) == 0) {
       s11 = get_sprite(sme->spriteKey);
       continue;
     }
-    if (strcmp(sme->state, key02) == 0) {
+    if (strcmp(sme->state, key12) == 0) {
       s12 = get_sprite(sme->spriteKey);
       continue;
     }
@@ -316,7 +316,7 @@ void _draw_platform(SDL_Renderer* rend, Actor* actor) {
 
   for (int y=0; y < actor->ECB->h / 32; y++) {
     for (int x=0; x < actor->ECB->w / 32; x++) {
-      Sprite* img;
+      Sprite* img = NULL;
       if      (x == 0                  && y == 0                 ) img = s00;
       else if (x == actor->ECB->w/32-1 && y == 0                 ) img = s02;
       else if (x == 0                  && y == actor->ECB->h/32-1) img = s20;
@@ -327,6 +327,9 @@ void _draw_platform(SDL_Renderer* rend, Actor* actor) {
       else if (                           y == actor->ECB->h/32-1) img = s21;
       else img = s11;
 
+      if (img == NULL) {
+	continue;
+      }
       SDL_Rect dest, src;
       dest.x = actor->ECB->x + x*32;
       dest.y = actor->ECB->y + y*32;
