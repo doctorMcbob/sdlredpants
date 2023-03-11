@@ -46,6 +46,9 @@ SyntaxNode* copy_SyntaxNode(SyntaxNode* orig) {
     }
     break;
   }
+  default:
+    copy->data = orig->data;
+    break;
   }
   return copy;
 }
@@ -115,7 +118,7 @@ void add_script_map(const char* name) {
   if (scm == NULL) {
     exit(-1);
   }
-  strcpy(scm->name, name);
+  strncpy(scm->name, name, 32);
   scm->entries = NULL;
   HASH_ADD_STR(scriptmaps, name, scm);
 }
@@ -136,7 +139,7 @@ void add_script_to_script_map(const char* name, char* state, int frame, int scri
   }
   struct ScriptMapEntry* sme;
   sme = malloc(sizeof(ScriptMapEntry));
-  strcpy(sme->state, state);
+  strncpy(sme->state, state, 32);
   sme->frame = frame;
   sme->scriptKey = scriptKey;
 
@@ -292,7 +295,7 @@ void evaluate_literals(Statement* statement,
       if (strcmp(sn->next->data.s, "name") == 0) {
 	new = new_syntax_node(STRING);
 	new->data.s = malloc(strlen(actor->name)+1);
-	strcpy(new->data.s, actor->name);
+	strncpy(new->data.s, actor->name, 32);
 	DL_DELETE(statement->params, parameter);
 	free_SyntaxNode(parameter);
 	DL_APPEND(statement->params, new);
@@ -302,7 +305,7 @@ void evaluate_literals(Statement* statement,
       if (strcmp(sn->next->data.s, "state") == 0) {
 	new = new_syntax_node(STRING);
 	new->data.s = malloc(strlen(actor->state)+1);
-	strcpy(new->data.s, actor->state);
+	strncpy(new->data.s, actor->state, 32);
 	DL_DELETE(statement->params, parameter);
 	free_SyntaxNode(parameter);
 	DL_APPEND(statement->params, new);
@@ -836,7 +839,7 @@ void resolve_verb(Statement* statement,
 	printf("Actor %s: Incorrect type for special case set name %i\n", selfActorKey, value->type);
 	return;
       }
-      strcpy(actor->name, value->data.s);
+      strncpy(actor->name, value->data.s, 32);
       break;
     }
 
@@ -845,7 +848,7 @@ void resolve_verb(Statement* statement,
 	printf("Actor %s: Incorrect type for special case set state %i\n", selfActorKey, value->type);
 	return;
       }
-      strcpy(actor->state, value->data.s);
+      strncpy(actor->state, value->data.s, 32);
       break;
     }
 
@@ -957,7 +960,7 @@ void resolve_verb(Statement* statement,
     HASH_FIND_STR(actor->attributes, attrKey->data.s, attr);
     if (attr == NULL) {
       attr = malloc(sizeof(Attribute));
-      strcpy(attr->name, attrKey->data.s);
+      strncpy(attr->name, attrKey->data.s, 32);
       attr->value = copy_SyntaxNode(value);
       HASH_ADD_STR(actor->attributes, name, attr);      
     } else {
