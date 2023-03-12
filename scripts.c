@@ -594,6 +594,229 @@ void resolve_operators(Statement* statement,
       }
       pop_nbrs(statement->params, sn);
       break;
+    case EQUALS:
+      if (sn->prev == NULL || sn->next == NULL) break;
+      if (sn->prev->type == STRING && sn->next->type == STRING) {
+	printf("== moment %s == %s?\n", sn->prev->data.s, sn->next->data.s);
+	sn->type = INT;
+	if (strcmp(sn->prev->data.s, sn->next->data.s) == 0) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == INT && sn->next->type == INT) {
+	printf("== moment %i == %i?\n", sn->prev->data.i, sn->next->data.i);
+	sn->type = INT;
+	if (sn->prev->data.i == sn->next->data.i) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+	printf("== moment %i == %f?\n", sn->prev->data.i, sn->next->data.f);
+	sn->type = INT;
+	if ((float)sn->prev->data.i == sn->next->data.f) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+	printf("== moment %f == %i?\n", sn->prev->data.f, sn->next->data.i);
+	sn->type = INT;
+	if (sn->prev->data.f == (float)sn->next->data.i) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+	printf("== moment %f == %f?\n", sn->prev->data.f, sn->next->data.f);
+	sn->type = INT;
+	if (sn->prev->data.f == sn->next->data.f) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else {
+	printf("Could not == types: %i, %i\n", sn->prev->type, sn->next->type);
+      }
+      pop_nbrs(statement->params, sn);
+      break;
+    case LESSTHAN:
+      if (sn->prev == NULL || sn->next == NULL) break;
+      if (sn->prev->type == INT && sn->next->type == INT) {
+	printf("< moment %i == %i?\n", sn->prev->data.i, sn->next->data.i);
+	sn->type = INT;
+	if (sn->prev->data.i < sn->next->data.i) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+	printf("< moment %i == %f?\n", sn->prev->data.i, sn->next->data.f);
+	sn->type = INT;
+	if ((float)sn->prev->data.i < sn->next->data.f) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+	printf("< moment %f == %i?\n", sn->prev->data.f, sn->next->data.i);
+	sn->type = INT;
+	if (sn->prev->data.f < (float)sn->next->data.i) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+	sn->type = INT;
+	if (sn->prev->data.f < sn->next->data.f) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else {
+	printf("Could not < types: %i, %i\n", sn->prev->type, sn->next->type);
+      }
+      pop_nbrs(statement->params, sn);
+      break;
+    case MORETHAN:
+      if (sn->prev == NULL || sn->next == NULL) break;
+      if (sn->prev->type == INT && sn->next->type == INT) {
+	printf("> moment %i == %i?\n", sn->prev->data.i, sn->next->data.i);
+	sn->type = INT;
+	if (sn->prev->data.i > sn->next->data.i) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+	printf("> moment %i == %f?\n", sn->prev->data.i, sn->next->data.f);
+	sn->type = INT;
+	if ((float)sn->prev->data.i > sn->next->data.f) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+	printf("> moment %f == %i?\n", sn->prev->data.f, sn->next->data.i);
+	sn->type = INT;
+	if (sn->prev->data.f > (float)sn->next->data.i) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+	printf("> moment %f == %f?\n", sn->prev->data.f, sn->next->data.f);
+	sn->type = INT;
+	if (sn->prev->data.f > sn->next->data.f) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else {
+	printf("Could not > types: %i, %i\n", sn->prev->type, sn->next->type);
+      }
+      pop_nbrs(statement->params, sn);
+      break;
+    case LESSEQUAL:
+      if (sn->prev == NULL || sn->next == NULL) break;
+      if (sn->prev->type == INT && sn->next->type == INT) {
+	printf("<= moment %i <= %i?\n", sn->prev->data.i, sn->next->data.i);
+	sn->type = INT;
+	if (sn->prev->data.i <= sn->next->data.i) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+	printf("<= moment %i == %f?\n", sn->prev->data.i, sn->next->data.f);
+	sn->type = INT;
+	if ((float)sn->prev->data.i <= sn->next->data.f) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+	printf("<= moment %f == %i?\n", sn->prev->data.f, sn->next->data.i);
+	sn->type = INT;
+	if (sn->prev->data.f <= (float)sn->next->data.i) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+	printf("<= moment %f == %f?\n", sn->prev->data.f, sn->next->data.f);
+	sn->type = INT;
+	if (sn->prev->data.f <= sn->next->data.f) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else {
+	printf("Could not <= types: %i, %i\n", sn->prev->type, sn->next->type);
+      }
+      pop_nbrs(statement->params, sn);
+      break;
+    case MOREEQUAL:
+      if (sn->prev == NULL || sn->next == NULL) break;
+      if (sn->prev->type == INT && sn->next->type == INT) {
+	printf(">= moment %i == %i?\n", sn->prev->data.i, sn->next->data.i);
+	sn->type = INT;
+	if (sn->prev->data.i >= sn->next->data.i) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+	printf(">= moment %i == %f?\n", sn->prev->data.i, sn->next->data.f);
+	sn->type = INT;
+	if ((float)sn->prev->data.i >= sn->next->data.f) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+	printf(">= moment %f == %i?\n", sn->prev->data.f, sn->next->data.i);
+	sn->type = INT;
+	if (sn->prev->data.f >= (float)sn->next->data.i) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+	printf(">= moment %f == %f?\n", sn->prev->data.f, sn->next->data.f);
+	sn->type = INT;
+	if (sn->prev->data.f >= sn->next->data.f) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else {
+	printf("Could not >= types: %i, %i\n", sn->prev->type, sn->next->type);
+      }
+      pop_nbrs(statement->params, sn);
+      break;
+    case NOTEQUAL:
+      if (sn->prev == NULL || sn->next == NULL) break;
+      if (sn->prev->type == STRING && sn->next->type == STRING) {
+	printf("String == String moment %s == %s?\n", sn->prev->data.s, sn->next->data.s);
+	sn->type = INT;
+	if (strcmp(sn->prev->data.s, sn->next->data.s) != 0) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == INT && sn->next->type == INT) {
+	printf("!= moment %i == %i?\n", sn->prev->data.i, sn->next->data.i);
+	sn->type = INT;
+	if (sn->prev->data.i != sn->next->data.i) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+	printf("!= moment %f == %i?\n", sn->prev->data.f, sn->next->data.i);
+	sn->type = INT;
+	if ((float)sn->prev->data.i != sn->next->data.f) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+	printf("!= moment %f == %i?\n", sn->prev->data.f, sn->next->data.i);
+	sn->type = INT;
+	if (sn->prev->data.f != (float)sn->next->data.i) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+	printf("!= moment %f == %f?\n", sn->prev->data.f, sn->next->data.f);
+	sn->type = INT;
+	if (sn->prev->data.f != sn->next->data.f) 
+	  sn->data.i = 1;
+	else
+	  sn->data.i = 0;
+      } else {
+	printf("Could not != types: %i, %i\n", sn->prev->type, sn->next->type);
+      }
+      pop_nbrs(statement->params, sn);
+      break;
     case AND:
       break;
     case OR:
