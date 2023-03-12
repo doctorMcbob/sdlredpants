@@ -19,6 +19,26 @@ https://github.com/troydhanson/uthash/blob/master/src/utlist.h
 Sprite* sprites = NULL;
 SpriteMap* spritemaps = NULL;
 
+
+void sprites_taredown() {
+  struct Sprite *s, *tmp;
+  HASH_ITER(hh, sprites, s, tmp) {
+    HASH_DEL(sprites, s);
+    SDL_DestroyTexture(s->image);
+    free(s);
+  }
+  struct SpriteMap *sm, *tmp2;
+  struct SpriteMapEntry *sme, *tmp3;
+  HASH_ITER(hh, spritemaps, sm, tmp2) {
+    DL_FOREACH_SAFE(sm->entries, sme, tmp3) {
+      DL_DELETE(sm->entries, sme);
+      free(sme);
+    }
+    HASH_DEL(spritemaps, sm);
+    free(sm);
+  }
+}
+
 void add_sprite_map(const char* name) {
   struct SpriteMap *sm;
   sm = malloc(sizeof(SpriteMap));
@@ -147,3 +167,4 @@ void load_spritesheet(SDL_Renderer* rend,
 
   SDL_FreeSurface(spritesheet);
 }
+
