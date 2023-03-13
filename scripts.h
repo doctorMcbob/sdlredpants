@@ -124,6 +124,7 @@ typedef struct SyntaxNode {
 typedef struct Statement {
   int verb;
   struct SyntaxNode* params;
+  struct SyntaxNode* buffer;
   struct SyntaxNode* script;
   struct Statement* next;
   struct Statement* prev;
