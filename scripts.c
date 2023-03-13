@@ -10,20 +10,20 @@ Script* scripts = NULL;
 ScriptMap* scriptmaps = NULL;
 
 void free_SyntaxNode(SyntaxNode* del) {
+  if (del == NULL) return;
   switch (del->type) {
   case STRING:
     free(del->data.s);
     break;
-  case LIST:
-    {
-      SyntaxNode *sn, *tmp;
-      DL_FOREACH_SAFE(del->data.list, sn, tmp) {
-	DL_DELETE(del->data.list, sn);
-	free_SyntaxNode(sn);
-      }
-
-      break;
+  case LIST: {
+    SyntaxNode *sn, *tmp;
+    DL_FOREACH_SAFE(del->data.list, sn, tmp) {
+      DL_DELETE(del->data.list, sn);
+      free_SyntaxNode(sn);
     }
+
+    break;
+  }
   }
   free(del);
 }
@@ -86,6 +86,7 @@ Statement* new_statement(int verb) {
     exit(-1);
   }
   s->params = NULL;
+  s->buffer = NULL;
   s->script = NULL;
   s->verb = verb;
   return s;
@@ -168,6 +169,11 @@ void clean_statement(Statement* statement) {
     free_SyntaxNode(sn);
   }
   statement->params = NULL;
+  DL_FOREACH_SAFE(statement->buffer, sn, tmp) {
+    DL_DELETE(statement->buffer, sn);
+    free_SyntaxNode(sn);
+  }
+  statement->buffer = NULL;
 }
 
 void evaluate_literals(Statement* statement,
@@ -187,215 +193,174 @@ void evaluate_literals(Statement* statement,
     case FLOAT:
     case INT:
     case STRING:
+      new = copy_SyntaxNode(sn);
+      DL_APPEND(statement->buffer, new);
+      break;
     case OPERATOR:
       new = copy_SyntaxNode(sn);
-      DL_APPEND(statement->params, new);
+      DL_APPEND(statement->buffer, new);
       break;
     case DOT: {
-      SyntaxNode* parameter = _get_last(statement->params);
+      SyntaxNode* parameter = _get_last(statement->buffer);
       if (parameter == NULL || sn->next == NULL) {
-	printf("actor %s: Missing parameter for dot notation on verb %i\n", selfActorKey, statement->verb);
-	break;
+	      printf("actor %s: Missing parameter for dot notation on verb %i\n", selfActorKey, statement->verb);
+	      break;
       }
       if (parameter->type != STRING) {
-	printf("actor %s: Cannot use dot notation on type %i\n", selfActorKey, parameter->type);
-	break;
+        printf("actor %s: Cannot use dot notation on type %i\n", selfActorKey, parameter->type);
+        break;
       }
       if (sn->next->type != STRING) {
-	printf("actor %s: Cannot use dot notation with type %i\n", selfActorKey, sn->next->type);
-	break;
+        printf("actor %s: Cannot use dot notation with type %i\n", selfActorKey, sn->next->type);
+        break;
       }
       char *actorKey = parameter->data.s;
       if (strcmp(actorKey, "self") == 0) actorKey = selfActorKey;
       else if (strcmp(actorKey, "related") == 0) actorKey= relatedActorKey;
       Actor *actor = get_actor(actorKey);
       if (!actor) {
-	printf("Could not find actor \n");
-	skipCauseDot = 1;
-	break;
+        printf("%s.%s", parameter->data.s, sn->next->data.s);
+        printf("Actor %s: Could not find actor %s\n", selfActorKey, actorKey);
+        skipCauseDot = 1;
+        break;
       }
+
+      free(parameter->data.s);
       // check special (top level actor attributes, not in hash)
-      // x, y, w, h,
-      // left, top, right, bottom,
-      // name, state, frame,
-      // x_vel, y_vel, direction, rotation,
-      // platform, tangible, physics      
       if (strcmp(sn->next->data.s, "x") == 0) {
-	new = new_syntax_node(INT);
-	new->data.i = actor->ECB->x;
-	DL_DELETE(statement->params, parameter);
-	free_SyntaxNode(parameter);
-	DL_APPEND(statement->params, new);
-	skipCauseDot = 1;
-	break;
+        parameter->type = INT;
+        parameter->data.i = actor->ECB->x;
+        skipCauseDot = 1;
+        break;
       }
       if (strcmp(sn->next->data.s, "y") == 0) {
-	new = new_syntax_node(INT);
-	new->data.i = actor->ECB->y;
-	DL_DELETE(statement->params, parameter);
-	free_SyntaxNode(parameter);
-	DL_APPEND(statement->params, new);
-	skipCauseDot = 1;
-	break;
+        parameter->type = INT;
+        parameter->data.i = actor->ECB->y;
+        skipCauseDot = 1;
+        break;
       }
       if (strcmp(sn->next->data.s, "w") == 0) {
-	new = new_syntax_node(INT);
-	new->data.i = actor->ECB->w;
-	DL_DELETE(statement->params, parameter);
-	free_SyntaxNode(parameter);
-	DL_APPEND(statement->params, new);
-	skipCauseDot = 1;
-	break;
+        parameter->type = INT; 
+        parameter->data.i = actor->ECB->w;
+        skipCauseDot = 1;
+        break;
       }
       if (strcmp(sn->next->data.s, "h") == 0) {
-	new = new_syntax_node(INT);
-	new->data.i = actor->ECB->h;
-	DL_DELETE(statement->params, parameter);
-	free_SyntaxNode(parameter);
-	DL_APPEND(statement->params, new);
-	skipCauseDot = 1;
-	break;
+        parameter->type = INT;
+        parameter->data.i = actor->ECB->h;
+        skipCauseDot = 1;
+        break;
       }
       if (strcmp(sn->next->data.s, "top") == 0) {
-	new = new_syntax_node(INT);
-	new->data.i = actor->ECB->y;
-	DL_DELETE(statement->params, parameter);
-	free_SyntaxNode(parameter);
-	DL_APPEND(statement->params, new);
-	skipCauseDot = 1;
-	break;
+        parameter->type = INT;
+        parameter->data.i = actor->ECB->y;
+        skipCauseDot = 1;
+        break;
       }
       if (strcmp(sn->next->data.s, "left") == 0) {
-	new = new_syntax_node(INT);
-	new->data.i = actor->ECB->x;
-	DL_DELETE(statement->params, parameter);
-	free_SyntaxNode(parameter);
-	DL_APPEND(statement->params, new);
-	skipCauseDot = 1;
-	break;
+        parameter->type = INT;
+        parameter->data.i = actor->ECB->x;
+        skipCauseDot = 1;
+        break;
       }
       if (strcmp(sn->next->data.s, "bottom") == 0) {
-	new = new_syntax_node(INT);
-	new->data.i = actor->ECB->y + actor->ECB->h;
-	DL_DELETE(statement->params, parameter);
-	free_SyntaxNode(parameter);
-	DL_APPEND(statement->params, new);
-	skipCauseDot = 1;
-	break;
+        parameter->type = INT;
+        parameter->data.i = actor->ECB->y + actor->ECB->h;
+        skipCauseDot = 1;
+        break;
       }
       if (strcmp(sn->next->data.s, "right") == 0) {
-	new = new_syntax_node(INT);
-	new->data.i = actor->ECB->x + actor->ECB->w;
-	DL_DELETE(statement->params, parameter);
-	free_SyntaxNode(parameter);
-	DL_APPEND(statement->params, new);
-	skipCauseDot = 1;
-	break;
+        parameter->type = INT;
+        parameter->data.i = actor->ECB->x + actor->ECB->w;
+        skipCauseDot = 1;
+        break;
       }
       if (strcmp(sn->next->data.s, "name") == 0) {
-	new = new_syntax_node(STRING);
-	new->data.s = malloc(strlen(actor->name)+1);
-	strncpy(new->data.s, actor->name, 32);
-	DL_DELETE(statement->params, parameter);
-	free_SyntaxNode(parameter);
-	DL_APPEND(statement->params, new);
-	skipCauseDot = 1;
-	break;
+        parameter->type = STRING;
+        parameter->data.s = malloc(strlen(actor->name)+1);
+        strncpy(parameter->data.s, actor->name, 32);
+        skipCauseDot = 1;
+        break;
       }
       if (strcmp(sn->next->data.s, "state") == 0) {
-	new = new_syntax_node(STRING);
-	new->data.s = malloc(strlen(actor->state)+1);
-	strncpy(new->data.s, actor->state, 32);
-	DL_DELETE(statement->params, parameter);
-	free_SyntaxNode(parameter);
-	DL_APPEND(statement->params, new);
-	skipCauseDot = 1;
-	break;
+        parameter->type = STRING;
+        parameter->data.s = malloc(strlen(actor->state)+1);
+        strncpy(parameter->data.s, actor->state, 32);
+        skipCauseDot = 1;
+        break;
       }
       if (strcmp(sn->next->data.s, "frame") == 0) {
-	new = new_syntax_node(INT);
-	new->data.i = actor->frame;
-	DL_DELETE(statement->params, parameter);
-	free_SyntaxNode(parameter);
-	DL_APPEND(statement->params, new);
-	skipCauseDot = 1;
-	break;
+        parameter->type = INT;
+        parameter->data.i = actor->frame;
+        skipCauseDot = 1;
+        break;
       }
       if (strcmp(sn->next->data.s, "x_vel") == 0) {
-	new = new_syntax_node(INT);
-	new->data.i = actor->x_vel;
-	DL_DELETE(statement->params, parameter);
-	free_SyntaxNode(parameter);
-	DL_APPEND(statement->params, new);
-	skipCauseDot = 1;
-	break;
+        parameter->type = INT;
+        parameter->data.i = actor->x_vel;
+        skipCauseDot = 1;
+        break;
       }
       if (strcmp(sn->next->data.s, "y_vel") == 0) {
-	new = new_syntax_node(INT);
-	new->data.i = actor->y_vel;
-	DL_DELETE(statement->params, parameter);
-	free_SyntaxNode(parameter);
-	DL_APPEND(statement->params, new);
-	skipCauseDot = 1;
-	break;
+        parameter->type = INT;
+        parameter->data.i = actor->y_vel;
+        skipCauseDot = 1;
+        break;
       }
       if (strcmp(sn->next->data.s, "direction") == 0) {
-	new = new_syntax_node(INT);
-	new->data.i = actor->direction;
-	DL_DELETE(statement->params, parameter);
-	free_SyntaxNode(parameter);
-	DL_APPEND(statement->params, new);
-	skipCauseDot = 1;
-	break;
+        parameter->type = INT;
+        parameter->data.i = actor->direction;
+        skipCauseDot = 1;
+        break;
       }
       if (strcmp(sn->next->data.s, "rotation") == 0) {
-	new = new_syntax_node(INT);
-	new->data.i = actor->rotation;
-	DL_DELETE(statement->params, parameter);
-	free_SyntaxNode(parameter);
-	DL_APPEND(statement->params, new);
-	skipCauseDot = 1;
-	break;
+        parameter->type = INT;
+        parameter->data.i = actor->rotation;
+        skipCauseDot = 1;
+        break;
       }
       if (strcmp(sn->next->data.s, "platform") == 0) {
-	new = new_syntax_node(INT);
-	new->data.i = actor->frame;
-	DL_DELETE(statement->params, parameter);
-	free_SyntaxNode(parameter);
-	DL_APPEND(statement->params, new);
-	skipCauseDot = 1;
-	break;
+        parameter->type = INT;
+        parameter->data.i = actor->frame;
+        skipCauseDot = 1;
+        break;
       }
       if (strcmp(sn->next->data.s, "tangible") == 0) {
-	new = new_syntax_node(INT);
-	new->data.i = actor->tangible;
-	DL_DELETE(statement->params, parameter);
-	free_SyntaxNode(parameter);
-	DL_APPEND(statement->params, new);
-	skipCauseDot = 1;
-	break;
+        parameter->type = INT;
+        parameter->data.i = actor->tangible;
+        skipCauseDot = 1;
+        break;
       }
       if (strcmp(sn->next->data.s, "physics") == 0) {
-	new = new_syntax_node(INT);
-	new->data.i = actor->physics;
-	DL_DELETE(statement->params, parameter);
-	free_SyntaxNode(parameter);
-	DL_APPEND(statement->params, new);
-	skipCauseDot = 1;
-	break;
+        parameter->type = INT;
+        parameter->data.i = actor->physics;
+        skipCauseDot = 1;
+        break;
       }
 
       Attribute *attribute = NULL;
       HASH_FIND_STR(actor->attributes, sn->next->data.s, attribute);
       if (attribute == NULL) {
-	printf("actor %s: could not find attribute of %s, %s\n", selfActorKey, parameter->data.s, sn->next->data.s);
-	break;
+        parameter = new_syntax_node(NONE);
+        parameter->data.i = 0;
+        skipCauseDot = 1;
+        break;
       }
       
-      new = copy_SyntaxNode(attribute->value);
-      DL_DELETE(statement->params, parameter);
-      free_SyntaxNode(parameter);
-      DL_APPEND(statement->params, new);
+      parameter->type = attribute->value->type;
+      if (attribute->value->type == STRING) {
+        parameter->data.s = (char*)malloc(strlen(attribute->value->data.s));
+        strcpy(parameter->data.s, attribute->value->data.s);
+      } else if (attribute->value->type == LIST) {
+        SyntaxNode *sn;
+        parameter->data.list = NULL;
+        DL_FOREACH(attribute->value->data.list, sn) {
+          SyntaxNode* cpy = copy_SyntaxNode(sn);
+          DL_APPEND(parameter->data.list, cpy);
+        }
+      } else {
+      	parameter->data =  attribute->value->data;
+      }
       skipCauseDot = 1;
       break;
     }
@@ -403,7 +368,7 @@ void evaluate_literals(Statement* statement,
       new = malloc(sizeof(SyntaxNode));
       new->type = INT;
       new->data.i = rand() % 2;
-      DL_APPEND(statement->params, new);
+      DL_APPEND(statement->buffer, new);
       break;
     case QWORLD:
       // put new SyntaxNode with type STRING with the worldKey
@@ -416,37 +381,37 @@ void evaluate_literals(Statement* statement,
       // put new SyntaxNode with type INT 0 or 1
       break;
     case LIST:
-      // put new SyntaxNode with type LIST onto params, setting data.list to NULL for the head of a DL
+      // put new SyntaxNode with type LIST onto buffer, setting data.list to NULL for the head of a DL
       new = new_syntax_node(LIST);
       new->data.list = NULL;
-      DL_APPEND(statement->params, new);
+      DL_APPEND(statement->buffer, new);
       break;
     case INP_A:
-      // put new SyntaxNode with type INT onto params, setting data.i to actorKey->_input_state A
+      // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state A
       break;
     case INP_B:
-      // put new SyntaxNode with type INT onto params, setting data.i to actorKey->_input_state B
+      // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state B
       break;
     case INP_X:
-      // put new SyntaxNode with type INT onto params, setting data.i to actorKey->_input_state X
+      // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state X
       break;
     case INP_Y:
-      // put new SyntaxNode with type INT onto params, setting data.i to actorKey->_input_state Y
+      // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state Y
       break;
     case INP_LEFT:
-      // put new SyntaxNode with type INT onto params, setting data.i to actorKey->_input_state LEFT
+      // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state LEFT
       break;
     case INP_UP:
-      // put new SyntaxNode with type INT onto params, setting data.i to actorKey->_input_state UP
+      // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state UP
       break;
     case INP_RIGHT:
-      // put new SyntaxNode with type INT onto params, setting data.i to actorKey->_input_state RIGHT
+      // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state RIGHT
       break;
     case INP_DOWN:
-      // put new SyntaxNode with type INT onto params, setting data.i to actorKey->_input_state DOWN
+      // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state DOWN
       break;
     case INP_START:
-      // put new SyntaxNode with type INT onto params, setting data.i to actorKey->_input_state START
+      // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state START
       break;
     case INP_EVENTS:
       // create a new SyntaxNode DL and fill it with SyntaxNodes with type STRING for each event we have in actorKey->_input_state EVENTS
@@ -485,162 +450,381 @@ void normalize_left_right(SyntaxNode* left, SyntaxNode* right) {
   }
 }
 
-void pop_nbrs(SyntaxNode* head, SyntaxNode* elm) {
-  SyntaxNode *hold;
-  hold = elm->next;
-  DL_DELETE(head, hold);
-  free_SyntaxNode(hold);
-  hold = elm->prev;
-  DL_DELETE(head, hold);
-  free_SyntaxNode(hold);
-}
-
 void resolve_operators(Statement* statement,
 		       char* worldKey,
 		       char* selfActorKey,
 		       char* relatedActorKey) {
   SyntaxNode *sn, *tmp;
-  DL_FOREACH_SAFE(statement->params, sn, tmp) {
-    if (sn->type != OPERATOR) continue;
+  DL_FOREACH_SAFE(statement->buffer, sn, tmp) {
+    SyntaxNode *new = NULL;
+    if (sn->type != OPERATOR) {
+      new = copy_SyntaxNode(sn);
+      DL_APPEND(statement->params, new);
+      continue;
+    }
     switch (sn->data.i) {
     case PLUS:
       if (sn->prev == NULL || sn->next == NULL) break;
       normalize_left_right(sn->prev, sn->next);
       if (sn->prev->type == STRING && sn->next->type == STRING) {
-	int len = strlen(sn->prev->data.s) + strlen(sn->next->data.s) + 1;
-	char* combined_str = (char*)malloc(len * sizeof(char)+1);
-	snprintf(combined_str, len, "%s%s", sn->prev->data.s, sn->next->data.s);
-	sn->type = STRING;
-	sn->data.s = combined_str;
+        int len = strlen(sn->prev->data.s) + strlen(sn->next->data.s) + 1;
+        char* combined_str = (char*)malloc(len * sizeof(char)+1);
+        snprintf(combined_str, len, "%s%s", sn->prev->data.s, sn->next->data.s);
+        
+        new = new_syntax_node(STRING);
+        new->data.s = combined_str;
+        DL_APPEND(statement->params, new);
       } else if (sn->prev->type == INT && sn->next->type == INT) {
-	sn->type = INT;
-	sn->data.i = sn->prev->data.i + sn->next->data.i;
+        new = new_syntax_node(INT);
+        new->data.i = sn->prev->data.i + sn->next->data.i;
+        DL_APPEND(statement->params, new);
       } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
-	sn->type = FLOAT;
-	sn->data.f = sn->prev->data.i + sn->next->data.f;
+        new = new_syntax_node(FLOAT);
+        new->data.f = sn->prev->data.i + sn->next->data.f;
+        DL_APPEND(statement->params, new);
       } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
-	sn->type = FLOAT;
-	sn->data.f = sn->prev->data.f + sn->next->data.i;
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
-	sn->type = FLOAT;
-	sn->data.f = sn->prev->data.f + sn->next->data.f;
+        new = new_syntax_node(FLOAT);
+        new->data.f = sn->prev->data.f + sn->next->data.i;
+        DL_APPEND(statement->params, new);
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+        new = new_syntax_node(FLOAT);
+        new->data.f = sn->prev->data.f + sn->next->data.f;
+        DL_APPEND(statement->params, new);
       } else {
-	printf("Could not + types: %i, %i\n", sn->prev->type, sn->next->type);
+	            printf("Could not + types: %i, %i\n", sn->prev->type, sn->next->type);
       }
-      pop_nbrs(statement->params, sn);
       break;
     case MINUS:
       if (sn->prev == NULL || sn->next == NULL) break;
       if (sn->prev->type == INT && sn->next->type == INT) {
-	sn->type = INT;
-	sn->data.i = sn->prev->data.i - sn->next->data.i;
+        new = new_syntax_node(INT);
+        new->data.i = sn->prev->data.i - sn->next->data.i;
+        DL_APPEND(statement->params, new);
       } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
-	sn->type = FLOAT;
-	sn->data.f = sn->prev->data.i - sn->next->data.f;
+        new = new_syntax_node(FLOAT);
+        new->data.f = sn->prev->data.i - sn->next->data.f;
+        DL_APPEND(statement->params, new);
       } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
-	sn->type = FLOAT;
-	sn->data.f = sn->prev->data.f - sn->next->data.i;
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
-	sn->type = FLOAT;
-	sn->data.f = sn->prev->data.f - sn->next->data.f;
+        new = new_syntax_node(FLOAT);
+        new->data.f = sn->prev->data.f - sn->next->data.i;
+        DL_APPEND(statement->params, new);
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+        new = new_syntax_node(FLOAT);
+        new->data.f = sn->prev->data.f - sn->next->data.f;
+        DL_APPEND(statement->params, new);
       } else {
-	printf("Could not - types: %i, %i\n", sn->prev->type, sn->next->type);
+      	printf("Could not - types: %i, %i\n", sn->prev->type, sn->next->type);
       }
-      pop_nbrs(statement->params, sn);
       break;
     case MULT:
       if (sn->prev == NULL || sn->next == NULL) break;
       if (sn->prev->type == INT && sn->next->type == INT) {
-	sn->type = INT;
-	sn->data.i = sn->prev->data.i * sn->next->data.i;
+        new = new_syntax_node(INT);
+        new->data.i = sn->prev->data.i * sn->next->data.i;
+        DL_APPEND(statement->params, new);
       } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
-	sn->type = FLOAT;
-	sn->data.f = sn->prev->data.i * sn->next->data.f;
+        new = new_syntax_node(FLOAT);
+        new->data.f = sn->prev->data.i * sn->next->data.f;
+        DL_APPEND(statement->params, new);
       } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
-	sn->type = FLOAT;
-	sn->data.f = sn->prev->data.f * sn->next->data.i;
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
-	sn->type = FLOAT;
-	sn->data.f = sn->prev->data.f * sn->next->data.f;
+        new = new_syntax_node(FLOAT);
+        new->data.f = sn->prev->data.f * sn->next->data.i;
+        DL_APPEND(statement->params, new);
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+        new = new_syntax_node(FLOAT);
+        new->data.f = sn->prev->data.f * sn->next->data.f;
+        DL_APPEND(statement->params, new);
       } else {
-	printf("Could not * types: %i, %i\n", sn->prev->type, sn->next->type);
+      	printf("Could not * types: %i, %i\n", sn->prev->type, sn->next->type);
       }
-      pop_nbrs(statement->params, sn);
       break;
     case FLOORDIV:
       if (sn->prev == NULL || sn->next == NULL) break;
-      sn->type = INT;
-      if (sn->prev->type == INT && sn->next->type == INT) {
-	sn->data.i = sn->prev->data.i / sn->next->data.i;
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (sn->prev->type == INT && sn->next->type == INT) {
+        new->data.i = sn->prev->data.i / sn->next->data.i;
       } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
-	sn->data.i = sn->prev->data.i / (int)sn->next->data.f;
+      	new->data.i = sn->prev->data.i / (int)sn->next->data.f;
       } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
-	sn->data.i = (int)sn->prev->data.f / sn->next->data.i;
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
-	sn->data.i = (int)sn->prev->data.f / (int)sn->next->data.f;
+      	new->data.i = (int)sn->prev->data.f / sn->next->data.i;
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+      	new->data.i = (int)sn->prev->data.f / (int)sn->next->data.f;
       } else {
-	printf("Could not // types: %i, %i\n", sn->prev->type, sn->next->type);
+      	printf("Could not // types: %i, %i\n", sn->prev->type, sn->next->type);
       }
-      pop_nbrs(statement->params, sn);
       break;
     case FLOATDIV:
       if (sn->prev == NULL || sn->next == NULL) break;
-      sn->type = FLOAT;
+      new = new_syntax_node(FLOAT);
+      DL_APPEND(statement->params, new);
       if (sn->prev->type == INT && sn->next->type == INT) {
-	sn->data.f = sn->prev->data.i / (float)sn->next->data.i;
+	      new->data.f = sn->prev->data.i / (float)sn->next->data.i;
       } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
-	sn->data.f = sn->prev->data.i / sn->next->data.f;
+	      new->data.f = sn->prev->data.i / sn->next->data.f;
       } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
-	sn->data.f = sn->prev->data.f / sn->next->data.i;
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
-	sn->data.f = sn->prev->data.f / sn->next->data.f;
+	      new->data.f = sn->prev->data.f / sn->next->data.i;
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+	      new->data.f = sn->prev->data.f / sn->next->data.f;
       } else {
-	printf("Could not / types: %i, %i\n", sn->prev->type, sn->next->type);
+	      printf("Could not / types: %i, %i\n", sn->prev->type, sn->next->type);
       }
-      pop_nbrs(statement->params, sn);
       break;
     case MOD:
       if (sn->prev == NULL || sn->next == NULL) break;
-      sn->type = INT;
+      new = new_syntax_node(INT);
+      DL_APPEND(statement->params, new);
       if (sn->prev->type == INT && sn->next->type == INT) {
-	sn->data.i = sn->prev->data.i % sn->next->data.i;
+      	new->data.i = sn->prev->data.i % sn->next->data.i;
       } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
-	sn->data.f = sn->prev->data.i % (int)sn->next->data.f;
+	      new->data.f = sn->prev->data.i % (int)sn->next->data.f;
       } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
-	sn->data.f = (int)sn->prev->data.f % sn->next->data.i;
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
-	sn->data.f = (int)sn->prev->data.f % (int)sn->next->data.f;
+	      new->data.f = (int)sn->prev->data.f % sn->next->data.i;
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+	      new->data.f = (int)sn->prev->data.f % (int)sn->next->data.f;
       } else {
-	printf("Could not %% types: %i, %i\n", sn->prev->type, sn->next->type);
+      	printf("Could not %% types: %i, %i\n", sn->prev->type, sn->next->type);
       }
-      pop_nbrs(statement->params, sn);
       break;
     case POW:
       if (sn->prev == NULL || sn->next == NULL) break;
       if (sn->prev->type == INT && sn->next->type == INT) {
-	sn->type = INT;
-	sn->data.i = pow(sn->prev->data.i,  sn->next->data.i);
+        new = new_syntax_node(INT);
+        new->data.i = pow(sn->prev->data.i,  sn->next->data.i);
+      	DL_APPEND(statement->params, new);
       } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
-	sn->type = FLOAT;
-	sn->data.f = pow(sn->prev->data.i, sn->next->data.f);
+        new = new_syntax_node(FLOAT);
+        new->data.f = pow(sn->prev->data.i, sn->next->data.f);
+        DL_APPEND(statement->params, new);
       } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
-	sn->type = FLOAT;
-	sn->data.f = pow(sn->prev->data.f, sn->next->data.i);
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
-	sn->type = FLOAT;
-	sn->data.f = pow(sn->prev->data.f, sn->next->data.f);
+        new = new_syntax_node(FLOAT);
+        new->data.f = pow(sn->prev->data.f, sn->next->data.i);
+        DL_APPEND(statement->params, new);
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+        new = new_syntax_node(FLOAT);
+        new->data.f = pow(sn->prev->data.f, sn->next->data.f);
+        DL_APPEND(statement->params, new);
       } else {
-	printf("Could not ** types: %i, %i\n", sn->prev->type, sn->next->type);
+      	printf("Could not ** types: %i, %i\n", sn->prev->type, sn->next->type);
       }
-      pop_nbrs(statement->params, sn);
       break;
     case EQUALS:
+      if (sn->prev == NULL || sn->next == NULL) break;
+      if (sn->prev->type == STRING && sn->next->type == STRING) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (strcmp(sn->prev->data.s, sn->next->data.s) == 0) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == INT && sn->next->type == INT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (sn->prev->data.i == sn->next->data.i) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if ((float)sn->prev->data.i == sn->next->data.f) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (sn->prev->data.f == (float)sn->next->data.i) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (sn->prev->data.f == sn->next->data.f) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else {
+	      printf("Could not == types: %i, %i\n", sn->prev->type, sn->next->type);
+      }
       break;
     case LESSTHAN:
+      if (sn->prev == NULL || sn->next == NULL) break;
+      if (sn->prev->type == INT && sn->next->type == INT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (sn->prev->data.i < sn->next->data.i) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if ((float)sn->prev->data.i < sn->next->data.f) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (sn->prev->data.f < (float)sn->next->data.i) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (sn->prev->data.f < sn->next->data.f) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else {
+      	printf("Could not < types: %i, %i\n", sn->prev->type, sn->next->type);
+      }
       break;
     case MORETHAN:
+      if (sn->prev == NULL || sn->next == NULL) break;
+      if (sn->prev->type == INT && sn->next->type == INT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (sn->prev->data.i > sn->next->data.i) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if ((float)sn->prev->data.i > sn->next->data.f) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (sn->prev->data.f > (float)sn->next->data.i) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (sn->prev->data.f > sn->next->data.f) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else {
+      	printf("Could not > types: %i, %i\n", sn->prev->type, sn->next->type);
+      }
+      break;
+    case LESSEQUAL:
+      if (sn->prev == NULL || sn->next == NULL) break;
+      if (sn->prev->type == INT && sn->next->type == INT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (sn->prev->data.i <= sn->next->data.i) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if ((float)sn->prev->data.i <= sn->next->data.f) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+        DL_APPEND(statement->params, new);
+        new = new_syntax_node(INT);
+        if (sn->prev->data.f <= (float)sn->next->data.i) 
+          sn->data.i = 1;
+        else
+          sn->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (sn->prev->data.f <= sn->next->data.f) 
+          sn->data.i = 1;
+        else
+          sn->data.i = 0;
+      } else {
+      	printf("Could not <= types: %i, %i\n", sn->prev->type, sn->next->type);
+      }
+      break;
+    case MOREEQUAL:
+      if (sn->prev == NULL || sn->next == NULL) break;
+      if (sn->prev->type == INT && sn->next->type == INT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (sn->prev->data.i >= sn->next->data.i) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if ((float)sn->prev->data.i >= sn->next->data.f) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (sn->prev->data.f >= (float)sn->next->data.i) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (sn->prev->data.f >= sn->next->data.f) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else {
+      	printf("Could not >= types: %i, %i\n", sn->prev->type, sn->next->type);
+      }
       break;
     case NOTEQUAL:
+      if (sn->prev == NULL || sn->next == NULL) break;
+      if (sn->prev->type == STRING && sn->next->type == STRING) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (strcmp(sn->prev->data.s, sn->next->data.s) != 0) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == INT && sn->next->type == INT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (sn->prev->data.i != sn->next->data.i) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if ((float)sn->prev->data.i != sn->next->data.f) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (sn->prev->data.f != (float)sn->next->data.i) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (sn->prev->data.f != sn->next->data.f) 
+          new->data.i = 1;
+        else
+          new->data.i = 0;
+      } else {
+	      printf("Could not != types: %i, %i\n", sn->prev->type, sn->next->type);
+      }
       break;
     case AND:
       break;
@@ -698,7 +882,7 @@ void resolve_verb(Statement* statement,
   case RESET:
     break;
   case SET: {
-    SyntaxNode *actorKey,*attrKey, *value;
+    SyntaxNode *actorKey, *attrKey, *value;
     actorKey = statement->params;
     if (actorKey == NULL) {
       printf("Actor %s: Missing all parameters for set.\n", selfActorKey);
@@ -733,111 +917,111 @@ void resolve_verb(Statement* statement,
 
     if (strcmp(attrKey->data.s, "x") == 0) {
       if (value->type != INT && value->type != FLOAT) {
-	printf("Actor %s: Incorrect type for set x %i\n", selfActorKey, value->type);
-	return;
+        printf("Actor %s: Incorrect type for set x %i\n", selfActorKey, value->type);
+        return;
       } else if (value->type == INT) {
-	actor->ECB->x = value->data.i;
+      	actor->ECB->x = value->data.i;
       } else {
-	actor->ECB->x = (int)value->data.f;
+	      actor->ECB->x = (int)value->data.f;
       } 
       break;
     }
 
     if (strcmp(attrKey->data.s, "y") == 0) {
       if (value->type != INT && value->type != FLOAT) {
-	printf("Actor %s: Incorrect type for set y %i\n", selfActorKey, value->type);
-	return;
+        printf("Actor %s: Incorrect type for set y %i\n", selfActorKey, value->type);
+        return;
       }
       if (value->type == INT) {
-	actor->ECB->y = value->data.i;
+	      actor->ECB->y = value->data.i;
       } else {
-	actor->ECB->y = (int)value->data.f;
+	      actor->ECB->y = (int)value->data.f;
       }
       break;
     }
 
     if (strcmp(attrKey->data.s, "w") == 0) {
       if (value->type != INT && value->type != FLOAT) {
-	printf("Actor %s: Incorrect type for set w %i\n", selfActorKey, value->type);
-	return;
+        printf("Actor %s: Incorrect type for set w %i\n", selfActorKey, value->type);
+        return;
       }
       if (value->type == INT) {
-	actor->ECB->w = value->data.i;
+	      actor->ECB->w = value->data.i;
       } else {
-	actor->ECB->w = (int)value->data.f;
+	      actor->ECB->w = (int)value->data.f;
       }
       break;
     }
 
     if (strcmp(attrKey->data.s, "h") == 0) {
       if (value->type != INT && value->type != FLOAT) {
-	printf("Actor %s: Incorrect type for set h %i\n", selfActorKey, value->type);
-	return;
+        printf("Actor %s: Incorrect type for set h %i\n", selfActorKey, value->type);
+        return;
       }
       if (value->type == INT) {
-	actor->ECB->h = value->data.i;
+	      actor->ECB->h = value->data.i;
       } else {
-	actor->ECB->h = (int)value->data.f;
+	      actor->ECB->h = (int)value->data.f;
       }
       break;
     }
 
     if (strcmp(attrKey->data.s, "top") == 0) {
       if (value->type != INT && value->type != FLOAT) {
-	printf("Actor %s: Incorrect type for special case set top %i\n", selfActorKey, value->type);
-	return;
+        printf("Actor %s: Incorrect type for special case set top %i\n", selfActorKey, value->type);
+        return;
       }
       if (value->type == INT) {
-	actor->ECB->y = value->data.i;
+	      actor->ECB->y = value->data.i;
       } else {
-	actor->ECB->y = (int)value->data.f;
+	      actor->ECB->y = (int)value->data.f;
       }
       break;
     }
 
     if (strcmp(attrKey->data.s, "left") == 0) {
       if (value->type != INT && value->type != FLOAT) {
-	printf("Actor %s: Incorrect type for special case set x left %i\n", selfActorKey, value->type);
-	return;
+        printf("Actor %s: Incorrect type for special case set x left %i\n", selfActorKey, value->type);
+        return;
       }
       if (value->type == INT) {
-	actor->ECB->x = value->data.i;
+	      actor->ECB->x = value->data.i;
       } else {
-	actor->ECB->x = (int)value->data.f;
+	      actor->ECB->x = (int)value->data.f;
       }
       break;
     }
 
     if (strcmp(attrKey->data.s, "bottom") == 0) {
       if (value->type != INT && value->type != FLOAT) {
-	printf("Actor %s: Incorrect type for special case set bottom %i\n", selfActorKey, value->type);
-	return;
+        printf("Actor %s: Incorrect type for special case set bottom %i\n", selfActorKey, value->type);
+        return;
       }
       if (value->type == INT) {
-	actor->ECB->y = value->data.i - actor->ECB->h;
+      	actor->ECB->y = value->data.i - actor->ECB->h;
       } else {
-	actor->ECB->y = (int)value->data.f - actor->ECB->h;
+	      actor->ECB->y = (int)value->data.f - actor->ECB->h;
       }
       break;
     }
 
     if (strcmp(attrKey->data.s, "right") == 0) {
       if (value->type != INT && value->type != FLOAT) {
-	printf("Actor %s: Incorrect type for special case set right %i\n", selfActorKey, value->type);
-	return;
+        printf("Actor %s: Incorrect type for special case set right %i\n", selfActorKey, value->type);
+        return;
       }
       if (value->type == INT) {
-	actor->ECB->x = value->data.i - actor->ECB->w;
+      	actor->ECB->x = value->data.i - actor->ECB->w;
       } else {
-	actor->ECB->x = (int)value->data.f - actor->ECB->w;
+	      actor->ECB->x = (int)value->data.f - actor->ECB->w;
       }
       break;
     }
 
     if (strcmp(attrKey->data.s, "name") == 0) {
       if (value->type != STRING) {
-	printf("Actor %s: Incorrect type for special case set name %i\n", selfActorKey, value->type);
-	return;
+        printf("Actor %s: Incorrect type for special case set name %i\n", selfActorKey, value->type);
+        return;
       }
       strncpy(actor->name, value->data.s, 32);
       break;
@@ -845,8 +1029,8 @@ void resolve_verb(Statement* statement,
 
     if (strcmp(attrKey->data.s, "state") == 0) {
       if (value->type != STRING) {
-	printf("Actor %s: Incorrect type for special case set state %i\n", selfActorKey, value->type);
-	return;
+        printf("Actor %s: Incorrect type for special case set state %i\n", selfActorKey, value->type);
+        return;
       }
       strncpy(actor->state, value->data.s, 32);
       break;
@@ -854,104 +1038,104 @@ void resolve_verb(Statement* statement,
 
     if (strcmp(attrKey->data.s, "frame") == 0) {
       if (value->type != INT && value->type != FLOAT) {
-	printf("Actor %s: Incorrect type for special case set frame %i\n", selfActorKey, value->type);
-	return;
+        printf("Actor %s: Incorrect type for special case set frame %i\n", selfActorKey, value->type);
+        return;
       }
       if (value->type == INT) {
-	actor->frame = value->data.i;
+      	actor->frame = value->data.i;
       } else {
-	actor->frame = (int)value->data.f;
+      	actor->frame = (int)value->data.f;
       }
       break;
     }
 
     if (strcmp(attrKey->data.s, "x_vel") == 0) {
       if (value->type != INT && value->type != FLOAT) {
-	printf("Actor %s: Incorrect type for special case set x_vel %i\n", selfActorKey, value->type);
-	return;
+        printf("Actor %s: Incorrect type for special case set x_vel %i\n", selfActorKey, value->type);
+        return;
       }
       if (value->type == INT) {
-	actor->x_vel = value->data.i;
+	      actor->x_vel = value->data.i;
       } else {
-	actor->x_vel = value->data.f;
+	      actor->x_vel = value->data.f;
       }
       break;
     }
 
     if (strcmp(attrKey->data.s, "y_vel") == 0) {
       if (value->type != INT && value->type != FLOAT) {
-	printf("Actor %s: Incorrect type for special case set y_vel %i\n", selfActorKey, value->type);
-	return;
+        printf("Actor %s: Incorrect type for special case set y_vel %i\n", selfActorKey, value->type);
+        return;
       }
       if (value->type == INT) {
-	actor->y_vel = value->data.i;
+      	actor->y_vel = value->data.i;
       } else {
-	actor->y_vel = (int)value->data.f;
+      	actor->y_vel = (int)value->data.f;
       }
       break;
     }
 
     if (strcmp(attrKey->data.s, "direction") == 0) {
       if (value->type != INT && value->type != FLOAT) {
-	printf("Actor %s: Incorrect type for special case set direction %i\n", selfActorKey, value->type);
-	return;
+        printf("Actor %s: Incorrect type for special case set direction %i\n", selfActorKey, value->type);
+        return;
       }
       if (value->type == INT) {
-	actor->direction = value->data.i;
+	      actor->direction = value->data.i;
       } else {
-	actor->direction = (int)value->data.f;
+	      actor->direction = (int)value->data.f;
       }
       break;
     }
 
     if (strcmp(attrKey->data.s, "rotation") == 0) {
       if (value->type != INT && value->type != FLOAT) {
-	printf("Actor %s: Incorrect type for special case set rotation %i\n", selfActorKey, value->type);
-	return;
+        printf("Actor %s: Incorrect type for special case set rotation %i\n", selfActorKey, value->type);
+        return;
       }
       if (value->type == INT) {
-	actor->rotation = value->data.i;
+	      actor->rotation = value->data.i;
       } else {
-	actor->rotation = (int)value->data.f;
+	      actor->rotation = (int)value->data.f;
       }
       break;
     }
 
     if (strcmp(attrKey->data.s, "platform") == 0) {
       if (value->type != INT && value->type != FLOAT) {
-	printf("Actor %s: Incorrect type for special case set platform %i\n", selfActorKey, value->type);
-	return;
+        printf("Actor %s: Incorrect type for special case set platform %i\n", selfActorKey, value->type);
+        return;
       }
       if (value->type == INT) {
-	actor->platform = value->data.i;
+      	actor->platform = value->data.i;
       } else {
-	actor->platform = (int)value->data.f;
+	      actor->platform = (int)value->data.f;
       }
       break;
     }
 
     if (strcmp(attrKey->data.s, "tangible") == 0) {
       if (value->type != INT && value->type != FLOAT) {
-	printf("Actor %s: Incorrect type for special case set tangible %i\n", selfActorKey, value->type);
-	return;
+        printf("Actor %s: Incorrect type for special case set tangible %i\n", selfActorKey, value->type);
+        return;
       }
       if (value->type == INT) {
-	actor->tangible = value->data.i;
+	      actor->tangible = value->data.i;
       } else {
-	actor->tangible = (int)value->data.f;
+	      actor->tangible = (int)value->data.f;
       }
       break;
     }
 
     if (strcmp(attrKey->data.s, "physics") == 0) {
       if (value->type != INT && value->type != FLOAT) {
-	printf("Actor %s: Incorrect type for special case set physics %i\n", selfActorKey, value->type);
-	return;
+        printf("Actor %s: Incorrect type for special case set physics %i\n", selfActorKey, value->type);
+        return;
       }
       if (value->type == INT) {
-	actor->physics = value->data.i;
+	      actor->physics = value->data.i;
       } else {
-	actor->physics = (int)value->data.f;
+	      actor->physics = (int)value->data.f;
       }
       break;
     }

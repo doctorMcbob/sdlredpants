@@ -85,6 +85,7 @@ int main (void)
     SDL_Delay(1000/30);
   }
 
+  sprites_taredown();
   
   SDL_DestroyRenderer(rend);
   SDL_DestroyWindow(screen);

@@ -43,4 +43,5 @@ void load_spritesheet(SDL_Renderer* rend,
 void add_sprite_map(const char* name);
 SpriteMap* get_sprite_map(const char* name);
 void add_to_sprite_map(const char* name, const char* state, int frame, const char* spriteKey);
+void sprites_taredown();
 #endif
