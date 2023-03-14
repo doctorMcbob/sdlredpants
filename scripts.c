@@ -25,7 +25,7 @@ void _debug_print_sytanxNode(SyntaxNode* sn) {
       printf("%s ", sn->data.s);
       break;
     case LIST: {
-      printf("[");
+      printf("(list at %p)[", sn->data.list);
       if (sn->data.list != NULL) {
         SyntaxNode *entry;
         DL_FOREACH(sn->data.list, entry) {
@@ -507,15 +507,14 @@ int resolve_script(int scriptKey,
     clean_statement(statement);
     evaluate_literals(statement, worldKey, selfActorKey, relatedActorKey);
     resolve_operators(statement, worldKey, selfActorKey, relatedActorKey);
-    // oh yeah baby _debug_print_statement(statement);
-
+    
     switch (statement->verb) {
     case QUIT:
       return -1;
     case GOODBYE:
       break;
     case BREAK:
-      break; // nice
+      return 1;
     case RESET:
       break;
     case SET: {
@@ -785,6 +784,13 @@ int resolve_script(int scriptKey,
         attr->value = copy_SyntaxNode(value);
         HASH_ADD_STR(actor->attributes, name, attr);      
       } else {
+        if (attr->value->type == LIST) {
+          SyntaxNode *sn, *tmp;
+          DL_FOREACH_SAFE(attr->value->data.list, sn, tmp) {
+            DL_DELETE(attr->value->data.list, sn);
+            free_SyntaxNode(sn);
+          }
+        }
         free_SyntaxNode(attr->value);
         attr->value = copy_SyntaxNode(value);
       }
@@ -854,10 +860,66 @@ int resolve_script(int scriptKey,
       break;
     case REBRAND:
       break;
-    case REMOVE:
+    case REMOVE: {
+      if (statement->params == NULL) {
+        printf("Missing all parameters for REMOVE\n");
+        break;
+      }
+      if (statement->params->type != LIST) {
+        printf("First parameter of REMOVE must be type LIST, not %i", statement->params->type);
+        break;
+      }
+      SyntaxNode *listParam = statement->params;
+      if (statement->params->next == NULL) {
+        printf("Missing value parameters for REMOVE\n");
+        break;
+      }
+      SyntaxNode *del = statement->params->next;
+      SyntaxNode *sn, *tmp, *match = NULL;
+      DL_FOREACH_SAFE(listParam->data.list, sn, tmp) {
+        if (del->type != sn->type) continue;
+        switch (del->type) {
+          case NONE:
+            match = sn;
+            break;
+          case INT:
+            if (del->data.i == sn->data.i) match = sn;
+            break;
+          case FLOAT:
+            if (del->data.f == sn->data.f) match = sn;
+            break;
+          case STRING:
+            if (strcmp(del->data.s, sn->data.s) == 0) match = sn;
+            break;
+          case LIST:
+            if (del->data.list == sn->data.list) match = sn;
+            break;
+        }
+      };
+      if (match != NULL) {
+        DL_DELETE(listParam, match);
+        free_SyntaxNode(match);
+      }
       break;
-    case ADD:
+    }
+    case ADD: {
+      if (statement->params == NULL) {
+        printf("Missing all parameters for ADD\n");
+        break;
+      }
+      if (statement->params->type != LIST) {
+        printf("First parameter of ADD must be type LIST, not %i", statement->params->type);
+        break;
+      }
+      SyntaxNode *listParam = statement->params;
+      if (statement->params->next == NULL) {
+        printf("Missing value parameters for ADD\n");
+        break;
+      }
+      
+      DL_APPEND(listParam->data.list, copy_SyntaxNode(statement->params->next));
       break;
+    }
     case HITBOXES:
       break;
     case HURTBOXES:
@@ -881,6 +943,10 @@ int resolve_script(int scriptKey,
     case FOR:
       break;
     case PRINT:
+      if (statement->params != NULL) {
+        _debug_print_sytanxNode(statement->params);
+      }
+      printf("\n");
       break;
     case UPDATE_STICKS:
       break;

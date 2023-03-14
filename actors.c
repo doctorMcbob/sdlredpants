@@ -207,7 +207,7 @@ int update_actor(char* actorKey, char* worldKey) {
   if (!actor) return 0;
   int scriptKey = get_script_for_actor(actor);
   if (scriptKey != -1) {
-    if (resolve_script(scriptKey, worldKey, actorKey, NULL) == -1) return -1;
+    return resolve_script(scriptKey, worldKey, actorKey, NULL);
   }
   return 0;
 }
