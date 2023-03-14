@@ -202,13 +202,14 @@ void add_template_from_actorkey(char* actorKey) {
   HASH_ADD_STR(templates, name, a);
 }
 
-void update_actor(char* actorKey, char* worldKey) {
+int update_actor(char* actorKey, char* worldKey) {
   Actor *actor = get_actor(actorKey);
-  if (!actor) return;
+  if (!actor) return 0;
   int scriptKey = get_script_for_actor(actor);
   if (scriptKey != -1) {
-    resolve_script(scriptKey, worldKey, actorKey, NULL);
+    if (resolve_script(scriptKey, worldKey, actorKey, NULL) == -1) return -1;
   }
+  return 0;
 }
 
 int get_script_for_actor(Actor* actor) {

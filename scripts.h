@@ -153,7 +153,7 @@ void add_node_to_statement(Statement* statement, SyntaxNode* node);
 void add_script_map(const char* name);
 ScriptMap* get_script_map(const char* name);
 void add_script_to_script_map(const char* name, char* state, int frame, int scriptKey);
-void resolve_script(int scriptKey, char* worldKey, char* selfActorKey, char* relatedActorKey);
+int resolve_script(int scriptKey, char* worldKey, char* selfActorKey, char* relatedActorKey);
 void clean_statement(Statement* statement);
 void evaluate_literals(Statement* statement,
 		       char* worldKey,
@@ -163,10 +163,6 @@ void resolve_operators(Statement* statement,
 		       char* worldKey,
 		       char* selfActorKey,
 		       char* relatedActorKey);
-void resolve_verb(Statement* statement,
-		  char* worldKey,
-		  char* selfActorKey,
-		  char* relatedActorKey);
 void free_SyntaxNode(SyntaxNode* del);
 SyntaxNode* copy_SyntaxNode(SyntaxNode* orig);
 #endif

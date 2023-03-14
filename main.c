@@ -78,7 +78,9 @@ int main (void)
   while (input_update() != -1) {
     SDL_RenderClear(rend);
 
-    update_world("root");
+    if (update_world("root") == -1) {
+      break;
+    };
     draw_frame(rend, "MAIN");
     
     SDL_RenderPresent(rend);

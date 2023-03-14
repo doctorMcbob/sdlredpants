@@ -54,13 +54,14 @@ void add_actor_to_world(const char* worldkey, const char* actorname) {
   DL_APPEND(w->actors, ae);
 }
 
-void update_world(char* worldKey) {
+int update_world(char* worldKey) {
   struct World *w;
   w = get_world(worldKey);
   struct ActorEntry *ae, *tmp;
   DL_FOREACH_SAFE(w->actors, ae, tmp) {
-    update_actor(ae->actorKey);
+    if (update_actor(ae->actorKey, worldKey) == -1) return -1;
   }
+  return 0;
 }
 
 void _draw_background(World* world, SDL_Renderer* rend) {
