@@ -115,7 +115,6 @@ typedef struct SyntaxNode {
     int i;
     float f;
     char *s;
-    struct SyntaxNode* list;
   } data;
   struct SyntaxNode* next;
   struct SyntaxNode* prev;
@@ -144,6 +143,12 @@ typedef struct ScriptMap {
   UT_hash_handle hh;
 } ScriptMap;
 
+typedef struct ListTypeEntry {
+  int listKey;
+  struct SyntaxNode* head;
+  UT_hash_handle hh;
+} ListTypeEntry;
+
 void add_script(int scriptKey);
 Script* get_script(int scriptKey);
 void add_statement_to_script(int scriptKey, Statement* statement);
@@ -165,4 +170,6 @@ void resolve_operators(Statement* statement,
 		       char* relatedActorKey);
 void free_SyntaxNode(SyntaxNode* del);
 SyntaxNode* copy_SyntaxNode(SyntaxNode* orig);
+int add_list();
+ListTypeEntry* get_list(int listKey);
 #endif
