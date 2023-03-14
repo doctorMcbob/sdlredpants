@@ -8,6 +8,8 @@
 
 Script* scripts = NULL;
 ScriptMap* scriptmaps = NULL;
+ListTypeEntry* lists = NULL;
+int nextListKey = 0;
 
 void _debug_print_sytanxNode(SyntaxNode* sn) {
   if (sn == NULL) return;
@@ -22,13 +24,14 @@ void _debug_print_sytanxNode(SyntaxNode* sn) {
       printf("%f ", sn->data.f);
       break;
     case STRING:
-      printf("%s ", sn->data.s);
+      printf("'%s' ", sn->data.s);
       break;
     case LIST: {
-      printf("(list at %p)[", sn->data.list);
-      if (sn->data.list != NULL) {
+      printf("[");
+      ListTypeEntry *list = get_list(sn->data.i);
+      if (list != NULL) {
         SyntaxNode *entry;
-        DL_FOREACH(sn->data.list, entry) {
+        DL_FOREACH(list->head, entry) {
           _debug_print_sytanxNode(entry);
         }
       }
@@ -334,21 +337,28 @@ void _debug_print_statement(Statement* statement) {
   printf("\n");
 }
 
+int add_list() {
+  ListTypeEntry *lte = malloc(sizeof(ListTypeEntry));
+  lte->head = NULL;
+  lte->listKey = nextListKey;
+  nextListKey++;
+  HASH_ADD_INT(lists, listKey, lte);
+  return lte->listKey;
+}
+
+ListTypeEntry* get_list(int listKey) {
+  ListTypeEntry *lte;
+  HASH_FIND_INT(lists, &listKey, lte);
+  if (lte == NULL) return NULL;
+  else return lte;
+}
+
 void free_SyntaxNode(SyntaxNode* del) {
   if (del == NULL) return;
   switch (del->type) {
   case STRING:
     free(del->data.s);
     break;
-  case LIST: {
-    SyntaxNode *sn, *tmp;
-    DL_FOREACH_SAFE(del->data.list, sn, tmp) {
-      DL_DELETE(del->data.list, sn);
-      free_SyntaxNode(sn);
-    }
-
-    break;
-  }
   }
   free(del);
 }
@@ -360,15 +370,6 @@ SyntaxNode* copy_SyntaxNode(SyntaxNode* orig) {
   case STRING: {
     copy->data.s = malloc(strlen(orig->data.s)+1);
     strcpy(copy->data.s, orig->data.s);
-    break;
-  }
-  case LIST: {
-    SyntaxNode *sn;
-    copy->data.list = NULL;
-    DL_FOREACH(orig->data.list, sn) {
-      SyntaxNode* cpy = copy_SyntaxNode(sn);
-      DL_APPEND(copy->data.list, cpy);
-    }
     break;
   }
   default:
@@ -784,13 +785,6 @@ int resolve_script(int scriptKey,
         attr->value = copy_SyntaxNode(value);
         HASH_ADD_STR(actor->attributes, name, attr);      
       } else {
-        if (attr->value->type == LIST) {
-          SyntaxNode *sn, *tmp;
-          DL_FOREACH_SAFE(attr->value->data.list, sn, tmp) {
-            DL_DELETE(attr->value->data.list, sn);
-            free_SyntaxNode(sn);
-          }
-        }
         free_SyntaxNode(attr->value);
         attr->value = copy_SyntaxNode(value);
       }
@@ -817,9 +811,11 @@ int resolve_script(int scriptKey,
         case STRING:
           conditionalPass = strlen(conditional->data.s) != 0;
           break;
-        case LIST:
-          conditionalPass = conditional->data.list != NULL;
+        case LIST: {
+          ListTypeEntry *list = get_list(conditional->data.i);
+          conditionalPass = list->head != NULL;
           break;
+        }
       }
 
       if (conditionalPass) {
@@ -874,9 +870,15 @@ int resolve_script(int scriptKey,
         printf("Missing value parameters for REMOVE\n");
         break;
       }
+      ListTypeEntry *list = get_list(listParam->data.i);
+      if (list == NULL)  {
+        printf("No list found at key %i for REMOVE\n", listParam->data.i);
+        break;
+      }
       SyntaxNode *del = statement->params->next;
       SyntaxNode *sn, *tmp, *match = NULL;
-      DL_FOREACH_SAFE(listParam->data.list, sn, tmp) {
+
+      DL_FOREACH_SAFE(list->head, sn, tmp) {
         if (del->type != sn->type) continue;
         switch (del->type) {
           case NONE:
@@ -892,7 +894,7 @@ int resolve_script(int scriptKey,
             if (strcmp(del->data.s, sn->data.s) == 0) match = sn;
             break;
           case LIST:
-            if (del->data.list == sn->data.list) match = sn;
+            if (del->data.i == sn->data.i) match = sn;
             break;
         }
       };
@@ -916,8 +918,14 @@ int resolve_script(int scriptKey,
         printf("Missing value parameters for ADD\n");
         break;
       }
+      ListTypeEntry *list = get_list(listParam->data.i);
+      if (list == NULL) {
+        printf("No list found at key %i for ADD\n", listParam->data.i);
+        break;
+      }
       
-      DL_APPEND(listParam->data.list, copy_SyntaxNode(statement->params->next));
+      SyntaxNode *new = copy_SyntaxNode(statement->params->next);
+      DL_APPEND(list->head, new);
       break;
     }
     case HITBOXES:
@@ -1144,13 +1152,6 @@ void evaluate_literals(Statement* statement,
       if (attribute->value->type == STRING) {
         parameter->data.s = (char*)malloc(strlen(attribute->value->data.s));
         strcpy(parameter->data.s, attribute->value->data.s);
-      } else if (attribute->value->type == LIST) {
-        SyntaxNode *sn;
-        parameter->data.list = NULL;
-        DL_FOREACH(attribute->value->data.list, sn) {
-          SyntaxNode* cpy = copy_SyntaxNode(sn);
-          DL_APPEND(parameter->data.list, cpy);
-        }
       } else {
       	parameter->data =  attribute->value->data;
       }
@@ -1179,7 +1180,7 @@ void evaluate_literals(Statement* statement,
     case LIST:
       // put new SyntaxNode with type LIST onto buffer, setting data.list to NULL for the head of a DL
       new = new_syntax_node(LIST);
-      new->data.list = NULL;
+      new->data.i = add_list();
       DL_APPEND(statement->buffer, new);
       break;
     case INP_A:
