@@ -482,6 +482,9 @@ int resolve_script(int scriptKey,
   int if_depth = 0;
   int for_depth = 0;
   DL_FOREACH(script->statements, statement) {
+
+    clean_statement(statement);
+
     if (if_depth > 0) {
       switch (statement->verb) {
         case IF: 
@@ -505,16 +508,17 @@ int resolve_script(int scriptKey,
       continue;
     }
 
-    clean_statement(statement);
     evaluate_literals(statement, worldKey, selfActorKey, relatedActorKey);
     resolve_operators(statement, worldKey, selfActorKey, relatedActorKey);
     
     switch (statement->verb) {
     case QUIT:
+      clean_statement(statement);
       return -1;
     case GOODBYE:
       break;
     case BREAK:
+      clean_statement(statement);
       return 1;
     case RESET:
       break;
@@ -950,31 +954,37 @@ int resolve_script(int scriptKey,
       break;
     case FOR:
       break;
-    case PRINT:
+    case PRINT: {
       if (statement->params != NULL) {
         _debug_print_sytanxNode(statement->params);
       }
       printf("\n");
       break;
+    }
     case UPDATE_STICKS:
       break;
-    }
+    }  
   }
   return 0;
 }
 
 void clean_statement(Statement* statement) {
-  SyntaxNode *sn, *tmp;
-  DL_FOREACH_SAFE(statement->params, sn, tmp) {
-    DL_DELETE(statement->params, sn);
-    free_SyntaxNode(sn);
+  if (statement->buffer != NULL) {
+    SyntaxNode *sn, *tmp;
+    DL_FOREACH_SAFE(statement->buffer, sn, tmp) {
+      DL_DELETE(statement->buffer, sn);
+      free_SyntaxNode(sn);
+    }
+    statement->buffer = NULL;
   }
-  statement->params = NULL;
-  DL_FOREACH_SAFE(statement->buffer, sn, tmp) {
-    DL_DELETE(statement->buffer, sn);
-    free_SyntaxNode(sn);
+  if (statement->params != NULL) {
+    SyntaxNode *sn2, *tmp2;
+    DL_FOREACH_SAFE(statement->params, sn2, tmp2) {
+      DL_DELETE(statement->params, sn2);
+      free_SyntaxNode(sn2);
+    }
+    statement->params = NULL;
   }
-  statement->buffer = NULL;
 }
 
 void evaluate_literals(Statement* statement,
@@ -1158,18 +1168,20 @@ void evaluate_literals(Statement* statement,
       skipCauseDot = 1;
       break;
     }
-    case QRAND:
+    case QRAND: {
       new = malloc(sizeof(SyntaxNode));
       new->type = INT;
       new->data.i = rand() % 2;
       DL_APPEND(statement->buffer, new);
       break;
-    case QWORLD:
+    }
+    case QWORLD: {
       // put new SyntaxNode with type STRING with the worldKey
       new = new_syntax_node(STRING);
       new->data.s = malloc(strlen(worldKey)+1);
       strcpy(new->data.s, worldKey);
       break;
+    }
     case QSONG:
       // put new SyntaxNode with type STRING with the key for the active song
       break;
@@ -1177,12 +1189,13 @@ void evaluate_literals(Statement* statement,
       // check if the actorKey is colliding with any other tangible actors int he worldKey
       // put new SyntaxNode with type INT 0 or 1
       break;
-    case LIST:
+    case LIST: {
       // put new SyntaxNode with type LIST onto buffer, setting data.list to NULL for the head of a DL
       new = new_syntax_node(LIST);
       new->data.i = add_list();
       DL_APPEND(statement->buffer, new);
       break;
+    }
     case INP_A:
       // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state A
       break;
@@ -1247,23 +1260,21 @@ void normalize_left_right(SyntaxNode* left, SyntaxNode* right) {
   }
 }
 
-void _remove_and_delete_from(SyntaxNode* head, SyntaxNode* del) {
-  DL_DELETE(head, del);
-  free_SyntaxNode(del);
-}
-
 void resolve_operators(Statement* statement,
 		       char* worldKey,
 		       char* selfActorKey,
 		       char* relatedActorKey) {
   SyntaxNode *sn, *tmp;
   int skipNbr = 0;
+
   DL_FOREACH_SAFE(statement->buffer, sn, tmp) {
+    
     if (skipNbr) {
       skipNbr = 0;
       continue;
     }
-    SyntaxNode *new = NULL;
+
+    SyntaxNode *new = NULL, *param = _get_last(statement->params);
     if (sn->type != OPERATOR) {
       new = copy_SyntaxNode(sn);
       DL_APPEND(statement->params, new);
@@ -1271,421 +1282,498 @@ void resolve_operators(Statement* statement,
     }
     skipNbr = 1;
     switch (sn->data.i) {
-    case PLUS:
-      if (sn->prev == NULL || sn->next == NULL) break;
-      normalize_left_right(sn->prev, sn->next);
-      if (sn->prev->type == STRING && sn->next->type == STRING) {
-        int len = strlen(sn->prev->data.s) + strlen(sn->next->data.s) + 1;
+    case PLUS: {
+      if (param == NULL || sn->next == NULL) break;
+      normalize_left_right(param, sn->next);
+      if (param->type == STRING && sn->next->type == STRING) {
+        int len = strlen(param->data.s) + strlen(sn->next->data.s) + 1;
         char* combined_str = (char*)malloc(len * sizeof(char)+1);
-        snprintf(combined_str, len, "%s%s", sn->prev->data.s, sn->next->data.s);
+        snprintf(combined_str, len, "%s%s", param->data.s, sn->next->data.s);
         
         new = new_syntax_node(STRING);
         new->data.s = combined_str;
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-      } else if (sn->prev->type == INT && sn->next->type == INT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == INT && sn->next->type == INT) {
         new = new_syntax_node(INT);
-        new->data.i = sn->prev->data.i + sn->next->data.i;
+        new->data.i = param->data.i + sn->next->data.i;
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
 
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+      } else if (param->type == INT && sn->next->type == FLOAT) {
         new = new_syntax_node(FLOAT);
-        new->data.f = sn->prev->data.i + sn->next->data.f;
+        new->data.f = param->data.i + sn->next->data.f;
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
 
-      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+      } else if (param->type == FLOAT && sn->next->type == INT) {
         new = new_syntax_node(FLOAT);
-        new->data.f = sn->prev->data.f + sn->next->data.i;
+        new->data.f = param->data.f + sn->next->data.i;
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
 
-      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+      } else if (param->type == FLOAT && sn->next->type == FLOAT) {
         new = new_syntax_node(FLOAT);
-        new->data.f = sn->prev->data.f + sn->next->data.f;
+        new->data.f = param->data.f + sn->next->data.f;
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
       } else {
-        printf("Could not + types: %i, %i\n", sn->prev->type, sn->next->type);
+        printf("Could not + types: %i, %i\n", param->type, sn->next->type);
       }
       break;
-    case MINUS:
-      if (sn->prev == NULL || sn->next == NULL) break;
-      if (sn->prev->type == INT && sn->next->type == INT) {
+    }
+    case MINUS: {
+      if (param == NULL || sn->next == NULL) break;
+      if (param->type == INT && sn->next->type == INT) {
         new = new_syntax_node(INT);
-        new->data.i = sn->prev->data.i - sn->next->data.i;
+        new->data.i = param->data.i - sn->next->data.i;
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == INT && sn->next->type == FLOAT) {
         new = new_syntax_node(FLOAT);
-        new->data.f = sn->prev->data.i - sn->next->data.f;
+        new->data.f = param->data.i - sn->next->data.f;
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == INT) {
         new = new_syntax_node(FLOAT);
-        new->data.f = sn->prev->data.f - sn->next->data.i;
+        new->data.f = param->data.f - sn->next->data.i;
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == FLOAT) {
         new = new_syntax_node(FLOAT);
-        new->data.f = sn->prev->data.f - sn->next->data.f;
+        new->data.f = param->data.f - sn->next->data.f;
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
       } else {
-      	printf("Could not - types: %i, %i\n", sn->prev->type, sn->next->type);
+      	printf("Could not - types: %i, %i\n", param->type, sn->next->type);
       }
       break;
-    case MULT:
-      if (sn->prev == NULL || sn->next == NULL) break;
-      if (sn->prev->type == INT && sn->next->type == INT) {
+    }
+    case MULT: {
+      if (param == NULL || sn->next == NULL) break;
+      if (param->type == INT && sn->next->type == INT) {
         new = new_syntax_node(INT);
-        new->data.i = sn->prev->data.i * sn->next->data.i;
+        new->data.i = param->data.i * sn->next->data.i;
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == INT && sn->next->type == FLOAT) {
         new = new_syntax_node(FLOAT);
-        new->data.f = sn->prev->data.i * sn->next->data.f;
+        new->data.f = param->data.i * sn->next->data.f;
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == INT) {
         new = new_syntax_node(FLOAT);
-        new->data.f = sn->prev->data.f * sn->next->data.i;
+        new->data.f = param->data.f * sn->next->data.i;
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == FLOAT) {
         new = new_syntax_node(FLOAT);
-        new->data.f = sn->prev->data.f * sn->next->data.f;
+        new->data.f = param->data.f * sn->next->data.f;
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
       } else {
-      	printf("Could not * types: %i, %i\n", sn->prev->type, sn->next->type);
+      	printf("Could not * types: %i, %i\n", param->type, sn->next->type);
       }
       break;
-    case FLOORDIV:
-      if (sn->prev == NULL || sn->next == NULL) break;
+    }
+    case FLOORDIV: {
+      if (param == NULL || sn->next == NULL) break;
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (sn->prev->type == INT && sn->next->type == INT) {
-        new->data.i = sn->prev->data.i / sn->next->data.i;
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
-      	new->data.i = sn->prev->data.i / (int)sn->next->data.f;
-      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
-      	new->data.i = (int)sn->prev->data.f / sn->next->data.i;
-      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
-      	new->data.i = (int)sn->prev->data.f / (int)sn->next->data.f;
+        if (param->type == INT && sn->next->type == INT) {
+        new->data.i = param->data.i / sn->next->data.i;
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == INT && sn->next->type == FLOAT) {
+      	new->data.i = param->data.i / (int)sn->next->data.f;
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == INT) {
+      	new->data.i = (int)param->data.f / sn->next->data.i;
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == FLOAT) {
+      	new->data.i = (int)param->data.f / (int)sn->next->data.f;
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
       } else {
-      	printf("Could not // types: %i, %i\n", sn->prev->type, sn->next->type);
+      	printf("Could not // types: %i, %i\n", param->type, sn->next->type);
       }
       break;
-    case FLOATDIV:
-      if (sn->prev == NULL || sn->next == NULL) break;
+    }
+    case FLOATDIV: {
+      if (param == NULL || sn->next == NULL) break;
       new = new_syntax_node(FLOAT);
       DL_APPEND(statement->params, new);
-      _remove_and_delete_from(statement->params, _get_last(statement->params));
-      if (sn->prev->type == INT && sn->next->type == INT) {
-	      new->data.f = sn->prev->data.i / (float)sn->next->data.i;
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
-	      new->data.f = sn->prev->data.i / sn->next->data.f;
-      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
-	      new->data.f = sn->prev->data.f / sn->next->data.i;
-      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
-	      new->data.f = sn->prev->data.f / sn->next->data.f;
+      if (param->type == INT && sn->next->type == INT) {
+	      new->data.f = param->data.i / (float)sn->next->data.i;
+      DL_DELETE(statement->params, param);
+      free_SyntaxNode(param);
+      } else if (param->type == INT && sn->next->type == FLOAT) {
+	      new->data.f = param->data.i / sn->next->data.f;
+      DL_DELETE(statement->params, param);
+      free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == INT) {
+	      new->data.f = param->data.f / sn->next->data.i;
+      DL_DELETE(statement->params, param);
+      free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == FLOAT) {
+	      new->data.f = param->data.f / sn->next->data.f;
+      DL_DELETE(statement->params, param);
+      free_SyntaxNode(param);
       } else {
-	      printf("Could not / types: %i, %i\n", sn->prev->type, sn->next->type);
+	      printf("Could not / types: %i, %i\n", param->type, sn->next->type);
       }
       break;
-    case MOD:
-      if (sn->prev == NULL || sn->next == NULL) break;
+    }
+    case MOD: {
+      if (param == NULL || sn->next == NULL) break;
       new = new_syntax_node(INT);
       DL_APPEND(statement->params, new);
-      _remove_and_delete_from(statement->params, _get_last(statement->params));
-      if (sn->prev->type == INT && sn->next->type == INT) {
-      	new->data.i = sn->prev->data.i % sn->next->data.i;
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
-	      new->data.f = sn->prev->data.i % (int)sn->next->data.f;
-      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
-	      new->data.f = (int)sn->prev->data.f % sn->next->data.i;
-      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
-	      new->data.f = (int)sn->prev->data.f % (int)sn->next->data.f;
+      if (param->type == INT && sn->next->type == INT) {
+      	new->data.i = param->data.i % sn->next->data.i;
+      DL_DELETE(statement->params, param);
+      free_SyntaxNode(param);
+      } else if (param->type == INT && sn->next->type == FLOAT) {
+	      new->data.f = param->data.i % (int)sn->next->data.f;
+      DL_DELETE(statement->params, param);
+      free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == INT) {
+	      new->data.f = (int)param->data.f % sn->next->data.i;
+      DL_DELETE(statement->params, param);
+      free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == FLOAT) {
+	      new->data.f = (int)param->data.f % (int)sn->next->data.f;
+      DL_DELETE(statement->params, param);
+      free_SyntaxNode(param);
       } else {
-      	printf("Could not %% types: %i, %i\n", sn->prev->type, sn->next->type);
+      	printf("Could not %% types: %i, %i\n", param->type, sn->next->type);
       }
       break;
-    case POW:
-      if (sn->prev == NULL || sn->next == NULL) break;
-      if (sn->prev->type == INT && sn->next->type == INT) {
+    }
+    case POW: {
+      if (param == NULL || sn->next == NULL) break;
+      if (param->type == INT && sn->next->type == INT) {
         new = new_syntax_node(INT);
-        new->data.i = pow(sn->prev->data.i,  sn->next->data.i);
+        new->data.i = pow(param->data.i,  sn->next->data.i);
       	DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == INT && sn->next->type == FLOAT) {
         new = new_syntax_node(FLOAT);
-        new->data.f = pow(sn->prev->data.i, sn->next->data.f);
+        new->data.f = pow(param->data.i, sn->next->data.f);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == INT) {
         new = new_syntax_node(FLOAT);
-        new->data.f = pow(sn->prev->data.f, sn->next->data.i);
+        new->data.f = pow(param->data.f, sn->next->data.i);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == FLOAT) {
         new = new_syntax_node(FLOAT);
-        new->data.f = pow(sn->prev->data.f, sn->next->data.f);
+        new->data.f = pow(param->data.f, sn->next->data.f);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
       } else {
-      	printf("Could not ** types: %i, %i\n", sn->prev->type, sn->next->type);
+      	printf("Could not ** types: %i, %i\n", param->type, sn->next->type);
       }
       break;
-    case EQUALS:
-      if (sn->prev == NULL || sn->next == NULL) break;
-      if (sn->prev->type == STRING && sn->next->type == STRING) {
+    }
+    case EQUALS: {
+      if (param == NULL || sn->next == NULL) break;
+      if (param->type == STRING && sn->next->type == STRING) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (strcmp(sn->prev->data.s, sn->next->data.s) == 0) 
+        if (strcmp(param->data.s, sn->next->data.s) == 0) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == INT && sn->next->type == INT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == INT && sn->next->type == INT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (sn->prev->data.i == sn->next->data.i) 
+        if (param->data.i == sn->next->data.i) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == INT && sn->next->type == FLOAT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if ((float)sn->prev->data.i == sn->next->data.f) 
+        if ((float)param->data.i == sn->next->data.f) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == INT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (sn->prev->data.f == (float)sn->next->data.i) 
+        if (param->data.f == (float)sn->next->data.i) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == FLOAT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (sn->prev->data.f == sn->next->data.f) 
+        if (param->data.f == sn->next->data.f) 
           new->data.i = 1;
         else
           new->data.i = 0;
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
       } else {
-	      printf("Could not == types: %i, %i\n", sn->prev->type, sn->next->type);
+	      printf("Could not == types: %i, %i\n", param->type, sn->next->type);
       }
       break;
-    case LESSTHAN:
-      if (sn->prev == NULL || sn->next == NULL) break;
-      if (sn->prev->type == INT && sn->next->type == INT) {
+    }
+    case LESSTHAN: {
+      if (param == NULL || sn->next == NULL) break;
+      if (param->type == INT && sn->next->type == INT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (sn->prev->data.i < sn->next->data.i) 
+        if (param->data.i < sn->next->data.i) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == INT && sn->next->type == FLOAT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if ((float)sn->prev->data.i < sn->next->data.f) 
+        if ((float)param->data.i < sn->next->data.f) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == INT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (sn->prev->data.f < (float)sn->next->data.i) 
+        if (param->data.f < (float)sn->next->data.i) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == FLOAT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (sn->prev->data.f < sn->next->data.f) 
+        if (param->data.f < sn->next->data.f) 
           new->data.i = 1;
         else
           new->data.i = 0;
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
       } else {
-      	printf("Could not < types: %i, %i\n", sn->prev->type, sn->next->type);
+      	printf("Could not < types: %i, %i\n", param->type, sn->next->type);
       }
       break;
-    case MORETHAN:
-      if (sn->prev == NULL || sn->next == NULL) break;
-      if (sn->prev->type == INT && sn->next->type == INT) {
+    }
+    case MORETHAN: {
+      if (param == NULL || sn->next == NULL) break;
+      if (param->type == INT && sn->next->type == INT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (sn->prev->data.i > sn->next->data.i) 
+        if (param->data.i > sn->next->data.i) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == INT && sn->next->type == FLOAT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if ((float)sn->prev->data.i > sn->next->data.f) 
+        if ((float)param->data.i > sn->next->data.f) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == INT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (sn->prev->data.f > (float)sn->next->data.i) 
+        if (param->data.f > (float)sn->next->data.i) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == FLOAT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (sn->prev->data.f > sn->next->data.f) 
+        if (param->data.f > sn->next->data.f) 
           new->data.i = 1;
         else
           new->data.i = 0;
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
       } else {
-      	printf("Could not > types: %i, %i\n", sn->prev->type, sn->next->type);
+      	printf("Could not > types: %i, %i\n", param->type, sn->next->type);
       }
       break;
-    case LESSEQUAL:
-      if (sn->prev == NULL || sn->next == NULL) break;
-      if (sn->prev->type == INT && sn->next->type == INT) {
+    }
+    case LESSEQUAL: {
+      if (param == NULL || sn->next == NULL) break;
+      if (param->type == INT && sn->next->type == INT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (sn->prev->data.i <= sn->next->data.i) 
+        if (param->data.i <= sn->next->data.i) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == INT && sn->next->type == FLOAT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if ((float)sn->prev->data.i <= sn->next->data.f) 
+        if ((float)param->data.i <= sn->next->data.f) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == INT) {
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
         new = new_syntax_node(INT);
-        if (sn->prev->data.f <= (float)sn->next->data.i) 
+        if (param->data.f <= (float)sn->next->data.i) 
+          sn->data.i = 1;
+        else
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+          sn->data.i = 0;
+      } else if (param->type == FLOAT && sn->next->type == FLOAT) {
+        new = new_syntax_node(INT);
+        DL_APPEND(statement->params, new);
+        if (param->data.f <= sn->next->data.f) 
           sn->data.i = 1;
         else
           sn->data.i = 0;
-      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
-        new = new_syntax_node(INT);
-        DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (sn->prev->data.f <= sn->next->data.f) 
-          sn->data.i = 1;
-        else
-          sn->data.i = 0;
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
       } else {
-      	printf("Could not <= types: %i, %i\n", sn->prev->type, sn->next->type);
+      	printf("Could not <= types: %i, %i\n", param->type, sn->next->type);
       }
       break;
-    case MOREEQUAL:
-      if (sn->prev == NULL || sn->next == NULL) break;
-      if (sn->prev->type == INT && sn->next->type == INT) {
+    }
+    case MOREEQUAL: {
+      if (param == NULL || sn->next == NULL) break;
+      if (param->type == INT && sn->next->type == INT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (sn->prev->data.i >= sn->next->data.i) 
+        if (param->data.i >= sn->next->data.i) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == INT && sn->next->type == FLOAT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if ((float)sn->prev->data.i >= sn->next->data.f) 
+        if ((float)param->data.i >= sn->next->data.f) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == INT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (sn->prev->data.f >= (float)sn->next->data.i) 
+        if (param->data.f >= (float)sn->next->data.i) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == FLOAT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (sn->prev->data.f >= sn->next->data.f) 
+        if (param->data.f >= sn->next->data.f) 
           new->data.i = 1;
         else
           new->data.i = 0;
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
       } else {
-      	printf("Could not >= types: %i, %i\n", sn->prev->type, sn->next->type);
+      	printf("Could not >= types: %i, %i\n", param->type, sn->next->type);
       }
       break;
-    case NOTEQUAL:
-      if (sn->prev == NULL || sn->next == NULL) break;
-      if (sn->prev->type == STRING && sn->next->type == STRING) {
+    }
+    case NOTEQUAL: {
+      if (param == NULL || sn->next == NULL) break;
+      if (param->type == STRING && sn->next->type == STRING) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (strcmp(sn->prev->data.s, sn->next->data.s) != 0) 
+        if (strcmp(param->data.s, sn->next->data.s) != 0) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == INT && sn->next->type == INT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == INT && sn->next->type == INT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (sn->prev->data.i != sn->next->data.i) 
+        if (param->data.i != sn->next->data.i) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == INT && sn->next->type == FLOAT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == INT && sn->next->type == FLOAT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if ((float)sn->prev->data.i != sn->next->data.f) 
+        if ((float)param->data.i != sn->next->data.f) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == FLOAT && sn->next->type == INT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == INT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (sn->prev->data.f != (float)sn->next->data.i) 
+        if (param->data.f != (float)sn->next->data.i) 
           new->data.i = 1;
         else
           new->data.i = 0;
-      } else if (sn->prev->type == FLOAT && sn->next->type == FLOAT) {
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+      } else if (param->type == FLOAT && sn->next->type == FLOAT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
-        _remove_and_delete_from(statement->params, _get_last(statement->params));
-        if (sn->prev->data.f != sn->next->data.f) 
+        if (param->data.f != sn->next->data.f) 
           new->data.i = 1;
         else
           new->data.i = 0;
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
       } else {
-	      printf("Could not != types: %i, %i\n", sn->prev->type, sn->next->type);
+	      printf("Could not != types: %i, %i\n", param->type, sn->next->type);
       }
       break;
-    case AND:
+    }
+    case AND:{
       break;
+    }
     case OR:
       break;
     case NOT:
