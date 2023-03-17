@@ -1885,10 +1885,92 @@ void resolve_operators(Statement* statement,
       free_SyntaxNode(param);
       break;
     }
-    case NOT:
+    case NOT: {
+      if (sn->next == NULL) break;
+      new = new_syntax_node(INT);
+      new->data.i = 1;
+      DL_APPEND(statement->params, new);
+      switch(sn->next->type) {
+        case INT:
+          if (param->data.i != 0) {
+            new->data.i = 0;
+          }
+          break;
+        case STRING:
+          if (param->data.s[0] != '\0') {
+            new->data.i = 0;
+          }
+          break;
+        case FLOAT:
+          if (param->data.f != 0) {
+            new->data.i = 0;
+          }
+          break;
+        case LIST: {
+          ListTypeEntry *lte = get_list(param->data.i);
+          if (lte != NULL && lte->head != NULL) {
+            new->data.i = 0;
+          }
+          break;
+        }
+      }
       break;
-    case NOR:
+    }
+    case NOR: {
+      if (param == NULL || sn->next == NULL) break;
+      new = new_syntax_node(INT);
+      new->data.i = 1;
+      DL_APPEND(statement->params, new);
+      switch(param->type) {
+        case INT:
+          if (param->data.i != 0) {
+            new->data.i = 0;
+          }
+          break;
+        case STRING:
+          if (param->data.s[0] != '\0') {
+            new->data.i = 0;
+          }
+          break;
+        case FLOAT:
+          if (param->data.f != 0) {
+            new->data.i = 0;
+          }
+          break;
+        case LIST: {
+          ListTypeEntry *lte = get_list(param->data.i);
+          if (lte != NULL && lte->head != NULL) {
+            new->data.i = 0;
+          }
+          break;
+        }
+      }
+      switch(sn->next->type) {
+        case INT:
+          if (param->data.i == 0) {
+            new->data.i = 0;
+          }
+          break;
+        case STRING:
+          if (param->data.s[0] == '\0') {
+            new->data.i = 0;
+          }
+          break;
+        case FLOAT:
+          if (param->data.f == 0) {
+            new->data.i = 0;
+          }
+          break;
+        case LIST: {
+          ListTypeEntry *lte = get_list(param->data.i);
+          if (lte == NULL || lte->head == NULL) {
+            new->data.i = 0;
+          }
+          break;
+        }
+      }
       break;
+    }
     case IN:
       break;
     case AT:
