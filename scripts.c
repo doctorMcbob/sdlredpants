@@ -2,6 +2,7 @@
 #include "uthash.h"
 #include "scripts.h"
 #include "actors.h"
+#include "worlds.h"
 #include <SDL2/SDL.h>
 #include <stdlib.h>
 #include <math.h>
@@ -2066,8 +2067,29 @@ void resolve_operators(Statement* statement,
         DL_APPEND(statement->params, new);
       } 
     }
-    case CASTINT:
+    case CASTINT: {
+      if (sn->next == NULL) break;
+      switch (sn->type) {
+        case INT: {
+          new = copy_SyntaxNode(sn->next);
+          DL_APPEND(statement->params, new);
+          break;
+        }
+        case FLOAT: {
+          new = new_syntax_node(INT);
+          new->data.i = (int)sn->next->data.i;
+          DL_APPEND(statement->params, new);
+          break;
+        }
+        case STRING: {
+          new = new_syntax_node(INT);
+          new->data.i = atoi(sn->next->data.s);
+          DL_APPEND(statement->params, new);
+          break;
+        }
+      }
       break;
+    }
     case CASTSTR:
       break;
     case MIN: {
@@ -2207,8 +2229,13 @@ void resolve_operators(Statement* statement,
       DL_APPEND(statement->params, new);
       break;
     }
-    case EXISTS:
+    case EXISTS: {
+      if (sn->next == NULL || sn->next->type != STRING) continue;
+      new = new_syntax_node(INT);
+      new->data.i = exists(sn->next->data.s);
+      DL_APPEND(statement->params, new);
       break;
+    }
     case HASFRAME:
       break;
     case CHOICEOF: {
@@ -2233,8 +2260,23 @@ void resolve_operators(Statement* statement,
       break;
     case ISINPUTSTATE:
       break;
-    case ABS:
+    case ABS: {
+      if (sn->next == NULL) break;
+      if (sn->type != INT && sn->type != FLOAT) break;
+      switch(sn->type) {
+        case INT:
+          new = new_syntax_node(INT);
+          new->data.i = abs(new->data.i);
+          DL_APPEND(statement->params, new);
+          break;
+        case FLOAT:
+          new = new_syntax_node(FLOAT);
+          new->data.i = fabs(new->data.f);
+          DL_APPEND(statement->params, new);
+          break;
+      }
       break;
+    }
     case RANGE:
       break;
     }

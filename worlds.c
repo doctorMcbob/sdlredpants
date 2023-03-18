@@ -104,3 +104,16 @@ void draw_world(World* world, SDL_Renderer* rend, const char* frameKey) {
       draw_actor(rend, a, frameKey);
   }
 };
+
+int exists(char* actorKey) {
+  struct World *w, *tmp;
+  HASH_ITER(hh, worlds, w, tmp) {
+    ActorEntry *ae;
+    DL_FOREACH(worlds->actors, ae) {
+      if (strcmp(ae->actorKey, actorKey) == 0) {
+        return 1;
+      }
+    }
+  }
+  return 0;
+}
