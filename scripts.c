@@ -5,6 +5,7 @@
 #include <SDL2/SDL.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 
 Script* scripts = NULL;
 ScriptMap* scriptmaps = NULL;
@@ -545,6 +546,7 @@ int resolve_script(int scriptKey,
       value = attrKey->next;
       if (value == NULL) {
         printf("Actor %s: Missing value parameter for set.\n", selfActorKey);
+        _debug_print_statement(statement);
         break;
       }
       Actor* actor;
@@ -1269,8 +1271,8 @@ void resolve_operators(Statement* statement,
 
   DL_FOREACH_SAFE(statement->buffer, sn, tmp) {
     
-    if (skipNbr) {
-      skipNbr = 0;
+    if (skipNbr>0) {
+      skipNbr--;
       continue;
     }
 
@@ -1971,28 +1973,262 @@ void resolve_operators(Statement* statement,
       }
       break;
     }
-    case IN:
-      break;
-    case AT:
-      break;
+    case IN: { // Ive decided for now not to support list in list checks
+      if (param == NULL || sn->next == NULL) break;
+      if (sn->next->type == LIST) {
+        new = new_syntax_node(INT);
+        new->data.i = 0;
+        ListTypeEntry *lte = get_list(sn->next->data.i);
+        if (lte == NULL) break;
+        SyntaxNode *find = lte->head;
+        DL_FOREACH(lte->head, find) {
+          if (find->type != param->type) continue;
+          if (find->type == STRING) {
+            if (strcmp(find->data.s, param->data.s) == 0) {
+              new->data.i = 1;
+              break;
+            }
+          } else if (find->type == FLOAT) {
+            if (find->data.i == param->data.i) {
+              new->data.i = 1;
+              break;          
+            }
+          } else if (find->type == INT) {
+            if (find->data.i == param->data.i) {
+              new->data.i = 1;
+              break;            
+            }
+          } else {
+            new->data.i = 1;
+            break;            
+          }
+        }
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+        DL_APPEND(statement->params, new);
+        break;
+      } else if (sn->next->type == STRING) {
+        char* test = NULL;
+        switch (param->type) {
+          case INT: {
+            int size = sprintf(NULL, 0, "%d", param->data.i);
+            char* buffer = malloc(size + 1);
+            sprintf(buffer, "%i", param->data.i);
+            test = strstr(sn->next->data.s, buffer);
+            free(buffer);
+            break;
+          }
+          case FLOAT: {
+            int size = sprintf(NULL, 0, "%d", param->data.f);
+            char* buffer = malloc(size + 1);
+            sprintf(buffer, "%f", param->data.f);
+            test = strstr(sn->next->data.s, buffer);
+            free(buffer);
+            break;
+          }
+          case STRING: {
+            test = strstr(sn->next->data.s, param->data.s);
+            break;
+          }
+        }
+        new = new_syntax_node(INT);
+        new->data.i = test == NULL;
+
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+        DL_APPEND(statement->params, new);
+      }
+    }
+    case AT:{
+      if (param == NULL || sn->next == NULL) break;
+      if (param->type != INT) break;
+      if (sn->next->type == LIST) {
+        ListTypeEntry *lte = get_list(sn->next->data.i);
+        if (lte == NULL) break;
+        SyntaxNode *find = lte->head;
+        for (int i = param->data.i; i>0; i--) {
+          if (find == NULL) break;
+          find = find->next;
+        }
+        if (find == NULL) break;
+        new = copy_SyntaxNode(find);
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+        DL_APPEND(statement->params, new);
+        break;
+      } else if (sn->next->type == STRING) {
+        if (param->data.i >= strlen(sn->next->data.s)) break;
+        new = new_syntax_node(STRING);
+        new->data.s = malloc(2);
+        strcpy(new->data.s, &(sn->next->data.s[param->data.i]));
+        DL_DELETE(statement->params, param);
+        free_SyntaxNode(param);
+        DL_APPEND(statement->params, new);
+      } 
+    }
     case CASTINT:
       break;
     case CASTSTR:
       break;
-    case MIN:
+    case MIN: {
+      if (sn->next == NULL || sn->next->next == NULL) break;
+      if (sn->next->type != INT && sn->next->type != FLOAT) {
+        printf("Called min on non numeric type: %i\n", sn->next->type);
+        break;
+      }
+      if (sn->next->next->type != INT && sn->next->next->type != FLOAT) {
+        printf("Called min on non numeric type: %i\n", sn->next->next->type);
+        break;
+      }
+      switch (sn->next->type + (sn->next->next->type * 2)) {
+        case (INT + (INT * 2)): {
+          if (sn->next->data.i < sn->next->next->data.i) {
+            new = copy_SyntaxNode(sn->next);
+          } else {
+            new = copy_SyntaxNode(sn->next->next);
+          }
+          break;
+        }
+        case (INT + (FLOAT * 2)): {
+          if (sn->next->data.i < sn->next->next->data.f) {
+            new = copy_SyntaxNode(sn->next);
+          } else {
+            new = copy_SyntaxNode(sn->next->next);
+          }
+          break;
+        }
+        case (FLOAT + (INT * 2)): {
+          if (sn->next->data.f < sn->next->next->data.i) {
+            new = copy_SyntaxNode(sn->next);
+          } else {
+            new = copy_SyntaxNode(sn->next->next);
+          }
+          break;
+        }
+        case (FLOAT + (FLOAT * 2)): {
+          if (sn->next->data.f < sn->next->next->data.f) {
+            new = copy_SyntaxNode(sn->next);
+          } else {
+            new = copy_SyntaxNode(sn->next->next);
+          }
+          break;
+        }
+      }
+      if (new == NULL) break;
+      DL_APPEND(statement->params, new);
       break;
-    case MAX:
+    }
+    case MAX: {
+      if (sn->next == NULL || sn->next->next == NULL) break;
+      if (sn->next->type != INT && sn->next->type != FLOAT) {
+        printf("Called max on non numeric type: %i\n", sn->next->type);
+        break;
+      }
+      if (sn->next->next->type != INT && sn->next->next->type != FLOAT) {
+        printf("Called max on non numeric type: %i\n", sn->next->next->type);
+        break;
+      }
+      switch (sn->next->type + (sn->next->next->type * 2)) {
+        case (INT + (INT * 2)): {
+          if (sn->next->data.i > sn->next->next->data.i) {
+            new = copy_SyntaxNode(sn->next);
+          } else {
+            new = copy_SyntaxNode(sn->next->next);
+          }
+          break;
+        }
+        case (INT + (FLOAT * 2)): {
+          if (sn->next->data.i > sn->next->next->data.f) {
+            new = copy_SyntaxNode(sn->next);
+          } else {
+            new = copy_SyntaxNode(sn->next->next);
+          }
+          break;
+        }
+        case (FLOAT + (INT * 2)): {
+          if (sn->next->data.f > sn->next->next->data.i) {
+            new = copy_SyntaxNode(sn->next);
+          } else {
+            new = copy_SyntaxNode(sn->next->next);
+          }
+          break;
+        }
+        case (FLOAT + (FLOAT * 2)): {
+          if (sn->next->data.f > sn->next->next->data.f) {
+            new = copy_SyntaxNode(sn->next);
+          } else {
+            new = copy_SyntaxNode(sn->next->next);
+          }
+          break;
+        }
+      }
+      if (new == NULL) break;
+      DL_APPEND(statement->params, new);
       break;
-    case LEN:
+    }
+    case LEN: {
+      if (sn->next == NULL || sn->next->type != LIST) break;
+      ListTypeEntry *lte = get_list(sn->next->data.i);
+      if (lte == NULL) break;
+      SyntaxNode *tmp;
+      new = new_syntax_node(INT);
+      DL_COUNT(lte->head, tmp, new->data.i);
+      DL_APPEND(statement->params, new);
       break;
-    case COUNTOF:
+    }
+    case COUNTOF: {
+      if (sn->next == NULL || sn->next->next == NULL || sn->next->type != LIST) break;
+      ListTypeEntry *lte = get_list(sn->next->data.i);
+      if (lte == NULL) break;
+      SyntaxNode *check;
+      int count = 0;
+      DL_FOREACH(lte->head, check) {
+        if (check->type != sn->next->next->type) continue;
+        switch (check->type) {
+          case INT: {
+            if (check->data.i == sn->next->next->data.i) count++;
+            break;
+          }
+          case FLOAT: {
+            if (check->data.f == sn->next->next->data.f) count++;
+            break;
+          }
+          case STRING: {
+            if (strcmp(check->data.s, sn->next->next->data.s) == 0) count++;
+            break;
+          }
+          case NONE:
+            count++;
+            break;
+        }
+      }
+      new = new_syntax_node(INT);
+      new->data.i = count;
+      DL_APPEND(statement->params, new);
       break;
+    }
     case EXISTS:
       break;
     case HASFRAME:
       break;
-    case CHOICEOF:
+    case CHOICEOF: {
+      if (sn->next == NULL || sn->next->type != LIST) break;
+      ListTypeEntry *lte = get_list(sn->next->data.i);
+      if (lte == NULL) break;
+      SyntaxNode *check;
+      int length, rando;
+      DL_COUNT(lte->head, check, length);
+      rando = rand() % length;
+      SyntaxNode *find = lte->head;
+      for (int i = rando; i>0; i--) {
+        if (find == NULL) break;
+        find = find->next;
+      }
+      if (find == NULL) break;
+      new = copy_SyntaxNode(find);
+      DL_APPEND(statement->params, new);
       break;
+    }
     case ISFRAME:
       break;
     case ISINPUTSTATE:
