@@ -98,3 +98,11 @@ void update_frame(const char* frameKey) {
     f->rect->y = f->bottom_bind - f->rect->h;
   }
 }
+
+int has_frame(char* worldKey) {
+  Frame *f, *tmp;
+  HASH_ITER(hh, frames, f, tmp) {
+    if (strcmp(worldKey, f->world->name) == 0) return 1;
+  }
+  return 0;
+}

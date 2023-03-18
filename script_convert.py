@@ -52,6 +52,7 @@ OPERATORS = {
     "isinputstate": 29,
     "abs": 30,
     "range": 31,
+    "inworld": 32,
 }
 
 VERBS = {
@@ -134,8 +135,7 @@ for mapKey in SCRIPTS.keys():
     sn{scriptKey}_{i}_{j}->data.i = {OPERATORS[token]};\n"""
                 elif token in LITERAL_KEYWORDS:
                     script_data_dot_c += f"""
-    SyntaxNode* sn{scriptKey}_{i}_{j} = new_syntax_node({LITERAL_KEYWORDS[token]});
-    sn{scriptKey}_{i}_{j}->data.list = NULL;\n"""
+    SyntaxNode* sn{scriptKey}_{i}_{j} = new_syntax_node({LITERAL_KEYWORDS[token]});\n"""
                 else:
                     try:
                         int(token)

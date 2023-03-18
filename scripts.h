@@ -60,6 +60,7 @@
 #define ISINPUTSTATE 29
 #define ABS 30
 #define RANGE 31
+#define INWORLD 32
 
 // Define Verbs
 #define QUIT 0
@@ -172,4 +173,5 @@ void free_SyntaxNode(SyntaxNode* del);
 SyntaxNode* copy_SyntaxNode(SyntaxNode* orig);
 int add_list();
 ListTypeEntry* get_list(int listKey);
+void clear_list(int listKey);
 #endif

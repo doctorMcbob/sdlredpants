@@ -13,6 +13,7 @@ I will be using uthash.h as my dictionary implementation
  */
 # include "inputs.h"
 # include "sprites.h"
+# include "scripts.h"
 # include "worlds.h"
 # include "frames.h"
 # include <string.h>
@@ -35,6 +36,8 @@ void scripts_load();
 int main (void)
 {
   srand(time(NULL));
+  add_list(); // 0 is reserved system list (for range)
+
   if (SDL_Init(SDL_INIT_VIDEO) != 0)
     {
       printf("Error initializing SDL2: %s\n", SDL_GetError());

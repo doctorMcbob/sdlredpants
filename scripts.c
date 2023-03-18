@@ -2,6 +2,8 @@
 #include "uthash.h"
 #include "scripts.h"
 #include "actors.h"
+#include "frames.h"
+#include "inputs.h"
 #include "worlds.h"
 #include <SDL2/SDL.h>
 #include <stdlib.h>
@@ -137,6 +139,9 @@ void _debug_print_sytanxNode(SyntaxNode* sn) {
         break;
         case RANGE:
         printf("range ");
+        break;
+        case INWORLD:
+        printf("inworld ");
         break;
       }
       break;
@@ -353,6 +358,16 @@ ListTypeEntry* get_list(int listKey) {
   HASH_FIND_INT(lists, &listKey, lte);
   if (lte == NULL) return NULL;
   else return lte;
+}
+
+void clear_list(int listKey) {
+  ListTypeEntry *lte = get_list(listKey);
+  if (lte == NULL) return;
+  SyntaxNode *sn, *tmp;
+  DL_FOREACH_SAFE(lte->head, sn, tmp) {
+    DL_DELETE(lte->head, sn);
+    free_SyntaxNode(sn);
+  }
 }
 
 void free_SyntaxNode(SyntaxNode* del) {
@@ -1332,6 +1347,7 @@ void resolve_operators(Statement* statement,
     }
     case MINUS: {
       if (param == NULL || sn->next == NULL) break;
+      normalize_left_right(param, sn->next);
       if (param->type == INT && sn->next->type == INT) {
         new = new_syntax_node(INT);
         new->data.i = param->data.i - sn->next->data.i;
@@ -1363,6 +1379,7 @@ void resolve_operators(Statement* statement,
     }
     case MULT: {
       if (param == NULL || sn->next == NULL) break;
+      normalize_left_right(param, sn->next);
       if (param->type == INT && sn->next->type == INT) {
         new = new_syntax_node(INT);
         new->data.i = param->data.i * sn->next->data.i;
@@ -1394,9 +1411,10 @@ void resolve_operators(Statement* statement,
     }
     case FLOORDIV: {
       if (param == NULL || sn->next == NULL) break;
-        new = new_syntax_node(INT);
-        DL_APPEND(statement->params, new);
-        if (param->type == INT && sn->next->type == INT) {
+      normalize_left_right(param, sn->next);
+      new = new_syntax_node(INT);
+      DL_APPEND(statement->params, new);
+      if (param->type == INT && sn->next->type == INT) {
         new->data.i = param->data.i / sn->next->data.i;
         DL_DELETE(statement->params, param);
         free_SyntaxNode(param);
@@ -1419,6 +1437,7 @@ void resolve_operators(Statement* statement,
     }
     case FLOATDIV: {
       if (param == NULL || sn->next == NULL) break;
+      normalize_left_right(param, sn->next);
       new = new_syntax_node(FLOAT);
       DL_APPEND(statement->params, new);
       if (param->type == INT && sn->next->type == INT) {
@@ -1444,6 +1463,7 @@ void resolve_operators(Statement* statement,
     }
     case MOD: {
       if (param == NULL || sn->next == NULL) break;
+      normalize_left_right(param, sn->next);
       new = new_syntax_node(INT);
       DL_APPEND(statement->params, new);
       if (param->type == INT && sn->next->type == INT) {
@@ -1469,6 +1489,7 @@ void resolve_operators(Statement* statement,
     }
     case POW: {
       if (param == NULL || sn->next == NULL) break;
+      normalize_left_right(param, sn->next);
       if (param->type == INT && sn->next->type == INT) {
         new = new_syntax_node(INT);
         new->data.i = pow(param->data.i,  sn->next->data.i);
@@ -1500,6 +1521,7 @@ void resolve_operators(Statement* statement,
     }
     case EQUALS: {
       if (param == NULL || sn->next == NULL) break;
+      normalize_left_right(param, sn->next);
       if (param->type == STRING && sn->next->type == STRING) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
@@ -1552,6 +1574,7 @@ void resolve_operators(Statement* statement,
     }
     case LESSTHAN: {
       if (param == NULL || sn->next == NULL) break;
+      normalize_left_right(param, sn->next);
       if (param->type == INT && sn->next->type == INT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
@@ -1595,6 +1618,7 @@ void resolve_operators(Statement* statement,
     }
     case MORETHAN: {
       if (param == NULL || sn->next == NULL) break;
+      normalize_left_right(param, sn->next);
       if (param->type == INT && sn->next->type == INT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
@@ -1638,6 +1662,7 @@ void resolve_operators(Statement* statement,
     }
     case LESSEQUAL: {
       if (param == NULL || sn->next == NULL) break;
+      normalize_left_right(param, sn->next);
       if (param->type == INT && sn->next->type == INT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
@@ -1681,6 +1706,7 @@ void resolve_operators(Statement* statement,
     }
     case MOREEQUAL: {
       if (param == NULL || sn->next == NULL) break;
+      normalize_left_right(param, sn->next);
       if (param->type == INT && sn->next->type == INT) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
@@ -1724,6 +1750,7 @@ void resolve_operators(Statement* statement,
     }
     case NOTEQUAL: {
       if (param == NULL || sn->next == NULL) break;
+      normalize_left_right(param, sn->next);
       if (param->type == STRING && sn->next->type == STRING) {
         new = new_syntax_node(INT);
         DL_APPEND(statement->params, new);
@@ -2090,8 +2117,33 @@ void resolve_operators(Statement* statement,
       }
       break;
     }
-    case CASTSTR:
+    case CASTSTR: {
+      if (sn->next == NULL) break;
+      switch (sn->type) {
+        case INT: {
+          new = new_syntax_node(STRING);
+          int size = sprintf(NULL, 0, "%i", sn->next->data.i);
+          new->data.s = malloc(size+1);
+          sprintf(new->data.s, "%i", sn->next->data.i);
+          DL_APPEND(statement->params, new);
+          break;
+        }
+        case FLOAT: {
+          new = new_syntax_node(STRING);
+          int size = sprintf(NULL, 0, "%f", sn->next->data.f);
+          new->data.s = malloc(size+1);
+          sprintf(new->data.s, "%f", sn->next->data.f);
+          DL_APPEND(statement->params, new);
+          break;
+        }
+        case STRING: {
+          new = copy_SyntaxNode(sn->next);
+          DL_APPEND(statement->params, new);
+          break;
+        }
+      }
       break;
+    }
     case MIN: {
       if (sn->next == NULL || sn->next->next == NULL) break;
       if (sn->next->type != INT && sn->next->type != FLOAT) {
@@ -2236,8 +2288,12 @@ void resolve_operators(Statement* statement,
       DL_APPEND(statement->params, new);
       break;
     }
-    case HASFRAME:
+    case HASFRAME: {
+      if (sn->next == NULL || sn->next->type != STRING) continue;
+      new = new_syntax_node(INT);
+      new->data.i = has_frame(sn->next->data.s);
       break;
+    }
     case CHOICEOF: {
       if (sn->next == NULL || sn->next->type != LIST) break;
       ListTypeEntry *lte = get_list(sn->next->data.i);
@@ -2256,10 +2312,37 @@ void resolve_operators(Statement* statement,
       DL_APPEND(statement->params, new);
       break;
     }
-    case ISFRAME:
+    case INWORLD: {
+      if (sn->next == NULL || sn->next->type != STRING) continue;
+      World* world = get_world(worldKey);
+      if (world == NULL) continue;
+      new = new_syntax_node(INT);
+      new->data.i = 0;
+      DL_APPEND(statement->params, new);
+      ActorEntry *ae;
+      DL_FOREACH(world->actors, ae) {
+        if (strcmp(ae->actorKey, sn->next->data.s) != 0) continue;
+        new->data.i = 1;
+        break;
+      }
       break;
-    case ISINPUTSTATE:
+    }
+    case ISFRAME: {
+      if (sn->next == NULL || sn->next->type != STRING) continue;
+      Frame *f = get_frame(sn->next->data.s);
+      new = new_syntax_node(INT);
+      new->data.i = f == NULL;
+      DL_APPEND(statement->params, new);
       break;
+    }
+    case ISINPUTSTATE: {
+      if (sn->next == NULL || sn->next->type != STRING) continue;
+      InputState *is = get_input_state(sn->next->data.s);
+      new = new_syntax_node(INT);
+      new->data.i = is == NULL;
+      DL_APPEND(statement->params, new);
+      break;
+    }
     case ABS: {
       if (sn->next == NULL) break;
       if (sn->type != INT && sn->type != FLOAT) break;
@@ -2277,8 +2360,20 @@ void resolve_operators(Statement* statement,
       }
       break;
     }
-    case RANGE:
+    case RANGE: {
+      if (sn->next == NULL || sn->next->type != INT) continue;
+      clear_list(0);
+      ListTypeEntry *lte = get_list(0);
+      for (int i = 0; i < sn->next->data.i; i++) {
+        SyntaxNode *listNode = new_syntax_node(INT);
+        listNode->data.i = i;
+        DL_APPEND(lte->head, listNode);
+      }
+      new = new_syntax_node(LIST);
+      new->data.i = 0;
+      DL_APPEND(statement->params, new);
       break;
+    }
     }
   }
 }
