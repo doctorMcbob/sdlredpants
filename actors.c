@@ -1,8 +1,10 @@
 # include <SDL2/SDL.h>
 # include <stdio.h>
 # include <string.h>
+# include <math.h>
 # include "uthash.h"
 # include "actors.h"
+# include "worlds.h"
 # include "frames.h"
 # include "scripts.h"
 
@@ -17,6 +19,13 @@ Actor* get_actor(const char* name) {
   } else {
     return NULL;
   }
+}
+
+void actors_reset_updated() {
+    Actor *a, *tmp;
+    HASH_ITER(hh, actors, a, tmp) {
+      a->updated = 0;
+    }
 }
 
 void add_actor(const char* name,
@@ -74,8 +83,7 @@ void add_actor(const char* name,
   if (scriptmapkey)
     strcpy(a->scriptmapkey, scriptmapkey);
 
-  if (img)
-    strcpy(a->img, img);
+  a->img = NULL;
 
   if (inputKey)
     strcpy(a->_input_name, inputKey);
@@ -135,7 +143,10 @@ void copy_actor(Actor* copy,  Actor *a) {
   strcpy(a->hitboxkey, copy->hitboxkey);
   strcpy(a->spritemapkey, copy->spritemapkey);
   strcpy(a->scriptmapkey, copy->scriptmapkey);
-  strcpy(a->img, copy->img);
+  if (a->img != NULL) {
+    free(a->img);
+  }
+  a->img = NULL;
   strcpy(a->_input_name, copy->_input_name);
   strcpy(a->state, copy->state);
   a->frame = copy->frame;
@@ -164,7 +175,7 @@ void add_template(Actor* copy) {
   HASH_ADD_STR(templates, name, a);
 }
 
-void add_actor_from_templatekey(char* templateKey) {
+void add_actor_from_templatekey(char* templateKey) { // TODO add name parameter (doy)
   struct Actor *copy;
   HASH_FIND_STR(templates, templateKey, copy);
   struct Actor *a;
@@ -205,10 +216,47 @@ void add_template_from_actorkey(char* actorKey) {
 int update_actor(char* actorKey, char* worldKey) {
   Actor *actor = get_actor(actorKey);
   if (!actor) return 0;
+  
+  World *world = get_world(worldKey);
+  if (!world) return 0;
+  if (actor->updated) {
+    if ((actor->physics || actor->tangible) && world_has(world, actorKey)) {
+      // TODO collision check
+    }
+    return 0;
+  }
+  actor->updated = 1;
+
+  if (actor->img != NULL) {
+      free(actor->img);
+      actor->img = NULL;
+  }
+
   int scriptKey = get_script_for_actor(actor);
   if (scriptKey != -1) {
-    return resolve_script(scriptKey, worldKey, actorKey, NULL);
+    int resolution = resolve_script(scriptKey, worldKey, actorKey, NULL);
+
+    if (resolution < 0) return resolution;
   }
+
+  float x_flag = actor->x_vel, y_flag = actor->y_vel;
+  if (actor->physics || actor->tangible) {
+    // TODO collision check
+    actor->ECB->x += floor(actor->x_vel);
+    actor->ECB->y += floor(actor->y_vel);
+  }
+
+  if (x_flag != actor->x_vel && floor(actor->x_vel) == 0) {
+    actor->x_vel = 0;
+    // TODO look for XCOLLISION script
+  }
+  if (y_flag != actor->y_vel && floor(actor->y_vel) == 0) {
+    actor->y_vel = 0;
+    // TODO look for YCOLLISION script
+  }
+  
+  actor->frame += 1;
+
   return 0;
 }
 
@@ -234,6 +282,10 @@ Sprite* get_sprite_for_actor(Actor* actor) {
   if (actor->platform) {
     return NULL;
   }
+  if (actor->img != NULL) {
+    return get_sprite(actor->img);
+  }
+
   struct SpriteMap *sm;
   sm = get_sprite_map(actor->spritemapkey);
   if (!sm) return NULL;

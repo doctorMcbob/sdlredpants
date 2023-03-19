@@ -354,7 +354,7 @@ int add_list() {
 }
 
 ListTypeEntry* get_list(int listKey) {
-  ListTypeEntry *lte;
+  ListTypeEntry *lte = NULL;
   HASH_FIND_INT(lists, &listKey, lte);
   if (lte == NULL) return NULL;
   else return lte;
@@ -533,6 +533,7 @@ int resolve_script(int scriptKey,
       clean_statement(statement);
       return -1;
     case GOODBYE:
+      return -2;
       break;
     case BREAK:
       clean_statement(statement);
@@ -543,24 +544,29 @@ int resolve_script(int scriptKey,
       SyntaxNode *actorKey, *attrKey, *value;
       actorKey = statement->params;
       if (actorKey == NULL) {
+        _debug_print_statement(statement);
         printf("Actor %s: Missing all parameters for set.\n", selfActorKey);
         break;
       }
       if (actorKey->type != STRING) {
+        _debug_print_statement(statement);
         printf("Actor %s: first parameter for set must be string.\n", selfActorKey);
         break;
       }
       attrKey = actorKey->next;
       if (attrKey == NULL) {
+        _debug_print_statement(statement);
         printf("Actor %s: Missing attribute parameter for set.\n", selfActorKey);
         break;
       }
       if (attrKey->type != STRING) {
+        _debug_print_statement(statement);
         printf("Actor %s: second parameter for set must be string.\n", selfActorKey);
         break;
       }
       value = attrKey->next;
       if (value == NULL) {
+        _debug_print_statement(statement);
         printf("Actor %s: Missing value parameter for set.\n", selfActorKey);
         _debug_print_statement(statement);
         break;
@@ -570,12 +576,14 @@ int resolve_script(int scriptKey,
       else if (strcmp(actorKey->data.s, "related") == 0) actor = get_actor(relatedActorKey);
       else actor = get_actor(actorKey->data.s);
       if (!actor) {
+        _debug_print_statement(statement);
         printf("Actor %s: Could not find actor %s for set\n", selfActorKey, actorKey->data.s);
         break;
       }
 
       if (strcmp(attrKey->data.s, "x") == 0) {
         if (value->type != INT && value->type != FLOAT) {
+          _debug_print_statement(statement);
           printf("Actor %s: Incorrect type for set x %i\n", selfActorKey, value->type);
           break;
         } else if (value->type == INT) {
@@ -588,6 +596,7 @@ int resolve_script(int scriptKey,
 
       if (strcmp(attrKey->data.s, "y") == 0) {
         if (value->type != INT && value->type != FLOAT) {
+          _debug_print_statement(statement);
           printf("Actor %s: Incorrect type for set y %i\n", selfActorKey, value->type);
           break;
         }
@@ -601,6 +610,7 @@ int resolve_script(int scriptKey,
 
       if (strcmp(attrKey->data.s, "w") == 0) {
         if (value->type != INT && value->type != FLOAT) {
+          _debug_print_statement(statement);
           printf("Actor %s: Incorrect type for set w %i\n", selfActorKey, value->type);
           break;
         }
@@ -614,6 +624,7 @@ int resolve_script(int scriptKey,
 
       if (strcmp(attrKey->data.s, "h") == 0) {
         if (value->type != INT && value->type != FLOAT) {
+          _debug_print_statement(statement);
           printf("Actor %s: Incorrect type for set h %i\n", selfActorKey, value->type);
           break;
         }
@@ -627,6 +638,7 @@ int resolve_script(int scriptKey,
 
       if (strcmp(attrKey->data.s, "top") == 0) {
         if (value->type != INT && value->type != FLOAT) {
+          _debug_print_statement(statement);
           printf("Actor %s: Incorrect type for special case set top %i\n", selfActorKey, value->type);
           break;
         }
@@ -640,6 +652,7 @@ int resolve_script(int scriptKey,
 
       if (strcmp(attrKey->data.s, "left") == 0) {
         if (value->type != INT && value->type != FLOAT) {
+          _debug_print_statement(statement);
           printf("Actor %s: Incorrect type for special case set x left %i\n", selfActorKey, value->type);
           break;
         }
@@ -653,6 +666,7 @@ int resolve_script(int scriptKey,
 
       if (strcmp(attrKey->data.s, "bottom") == 0) {
         if (value->type != INT && value->type != FLOAT) {
+          _debug_print_statement(statement);
           printf("Actor %s: Incorrect type for special case set bottom %i\n", selfActorKey, value->type);
           break;
         }
@@ -666,6 +680,7 @@ int resolve_script(int scriptKey,
 
       if (strcmp(attrKey->data.s, "right") == 0) {
         if (value->type != INT && value->type != FLOAT) {
+          _debug_print_statement(statement);
           printf("Actor %s: Incorrect type for special case set right %i\n", selfActorKey, value->type);
           break;
         }
@@ -679,6 +694,7 @@ int resolve_script(int scriptKey,
 
       if (strcmp(attrKey->data.s, "name") == 0) {
         if (value->type != STRING) {
+          _debug_print_statement(statement);
           printf("Actor %s: Incorrect type for special case set name %i\n", selfActorKey, value->type);
           break;
         }
@@ -688,6 +704,7 @@ int resolve_script(int scriptKey,
 
       if (strcmp(attrKey->data.s, "state") == 0) {
         if (value->type != STRING) {
+          _debug_print_statement(statement);
           printf("Actor %s: Incorrect type for special case set state %i\n", selfActorKey, value->type);
           break;
         }
@@ -697,6 +714,7 @@ int resolve_script(int scriptKey,
 
       if (strcmp(attrKey->data.s, "frame") == 0) {
         if (value->type != INT && value->type != FLOAT) {
+          _debug_print_statement(statement);
           printf("Actor %s: Incorrect type for special case set frame %i\n", selfActorKey, value->type);
           break;
         }
@@ -710,6 +728,7 @@ int resolve_script(int scriptKey,
 
       if (strcmp(attrKey->data.s, "x_vel") == 0) {
         if (value->type != INT && value->type != FLOAT) {
+          _debug_print_statement(statement);
           printf("Actor %s: Incorrect type for special case set x_vel %i\n", selfActorKey, value->type);
           break;
         }
@@ -723,6 +742,7 @@ int resolve_script(int scriptKey,
 
       if (strcmp(attrKey->data.s, "y_vel") == 0) {
         if (value->type != INT && value->type != FLOAT) {
+          _debug_print_statement(statement);
           printf("Actor %s: Incorrect type for special case set y_vel %i\n", selfActorKey, value->type);
           break;
         }
@@ -736,6 +756,7 @@ int resolve_script(int scriptKey,
 
       if (strcmp(attrKey->data.s, "direction") == 0) {
         if (value->type != INT && value->type != FLOAT) {
+          _debug_print_statement(statement);
           printf("Actor %s: Incorrect type for special case set direction %i\n", selfActorKey, value->type);
           break;
         }
@@ -749,6 +770,7 @@ int resolve_script(int scriptKey,
 
       if (strcmp(attrKey->data.s, "rotation") == 0) {
         if (value->type != INT && value->type != FLOAT) {
+          _debug_print_statement(statement);
           printf("Actor %s: Incorrect type for special case set rotation %i\n", selfActorKey, value->type);
           break;
         }
@@ -762,6 +784,7 @@ int resolve_script(int scriptKey,
 
       if (strcmp(attrKey->data.s, "platform") == 0) {
         if (value->type != INT && value->type != FLOAT) {
+          _debug_print_statement(statement);
           printf("Actor %s: Incorrect type for special case set platform %i\n", selfActorKey, value->type);
           break;
         }
@@ -775,6 +798,7 @@ int resolve_script(int scriptKey,
 
       if (strcmp(attrKey->data.s, "tangible") == 0) {
         if (value->type != INT && value->type != FLOAT) {
+          _debug_print_statement(statement);
           printf("Actor %s: Incorrect type for special case set tangible %i\n", selfActorKey, value->type);
           break;
         }
@@ -788,6 +812,7 @@ int resolve_script(int scriptKey,
 
       if (strcmp(attrKey->data.s, "physics") == 0) {
         if (value->type != INT && value->type != FLOAT) {
+          _debug_print_statement(statement);
           printf("Actor %s: Incorrect type for special case set physics %i\n", selfActorKey, value->type);
           break;
         }
@@ -818,6 +843,7 @@ int resolve_script(int scriptKey,
       SyntaxNode *conditional;
       conditional = statement->params;
       if (conditional == NULL) {
+        _debug_print_statement(statement);
         printf("Actor %s: Missing conditional for if.\n", selfActorKey);
         break;
       }
@@ -880,20 +906,24 @@ int resolve_script(int scriptKey,
       break;
     case REMOVE: {
       if (statement->params == NULL) {
+        _debug_print_statement(statement);
         printf("Missing all parameters for REMOVE\n");
         break;
       }
       if (statement->params->type != LIST) {
+        _debug_print_statement(statement);
         printf("First parameter of REMOVE must be type LIST, not %i", statement->params->type);
         break;
       }
       SyntaxNode *listParam = statement->params;
       if (statement->params->next == NULL) {
+        _debug_print_statement(statement);
         printf("Missing value parameters for REMOVE\n");
         break;
       }
       ListTypeEntry *list = get_list(listParam->data.i);
       if (list == NULL)  {
+        _debug_print_statement(statement);
         printf("No list found at key %i for REMOVE\n", listParam->data.i);
         break;
       }
@@ -928,20 +958,24 @@ int resolve_script(int scriptKey,
     }
     case ADD: {
       if (statement->params == NULL) {
+        _debug_print_statement(statement);
         printf("Missing all parameters for ADD\n");
         break;
       }
       if (statement->params->type != LIST) {
+        _debug_print_statement(statement);
         printf("First parameter of ADD must be type LIST, not %i", statement->params->type);
         break;
       }
       SyntaxNode *listParam = statement->params;
       if (statement->params->next == NULL) {
+        _debug_print_statement(statement);
         printf("Missing value parameters for ADD\n");
         break;
       }
       ListTypeEntry *list = get_list(listParam->data.i);
       if (list == NULL) {
+        _debug_print_statement(statement);
         printf("No list found at key %i for ADD\n", listParam->data.i);
         break;
       }
@@ -1034,14 +1068,17 @@ void evaluate_literals(Statement* statement,
     case DOT: {
       SyntaxNode* parameter = _get_last(statement->buffer);
       if (parameter == NULL || sn->next == NULL) {
+        _debug_print_statement(statement);
 	      printf("actor %s: Missing parameter for dot notation on verb %i\n", selfActorKey, statement->verb);
 	      break;
       }
       if (parameter->type != STRING) {
+        _debug_print_statement(statement);
         printf("actor %s: Cannot use dot notation on type %i\n", selfActorKey, parameter->type);
         break;
       }
       if (sn->next->type != STRING) {
+        _debug_print_statement(statement);
         printf("actor %s: Cannot use dot notation with type %i\n", selfActorKey, sn->next->type);
         break;
       }
@@ -1049,8 +1086,8 @@ void evaluate_literals(Statement* statement,
       if (strcmp(actorKey, "self") == 0) actorKey = selfActorKey;
       else if (strcmp(actorKey, "related") == 0) actorKey= relatedActorKey;
       Actor *actor = get_actor(actorKey);
-      if (!actor) {
-        printf("%s.%s", parameter->data.s, sn->next->data.s);
+      if (actor == NULL) {
+        _debug_print_statement(statement);
         printf("Actor %s: Could not find actor %s\n", selfActorKey, actorKey);
         skipCauseDot = 1;
         break;
@@ -1109,14 +1146,14 @@ void evaluate_literals(Statement* statement,
       if (strcmp(sn->next->data.s, "name") == 0) {
         parameter->type = STRING;
         parameter->data.s = malloc(strlen(actor->name)+1);
-        strncpy(parameter->data.s, actor->name, 32);
+        strncpy(parameter->data.s, actor->name, strlen(actor->name)+1);
         skipCauseDot = 1;
         break;
       }
       if (strcmp(sn->next->data.s, "state") == 0) {
         parameter->type = STRING;
         parameter->data.s = malloc(strlen(actor->state)+1);
-        strncpy(parameter->data.s, actor->state, 32);
+        strncpy(parameter->data.s, actor->state, strlen(actor->name)+1);
         skipCauseDot = 1;
         break;
       }
@@ -1535,6 +1572,7 @@ void resolve_operators(Statement* statement,
         DL_DELETE(statement->params, param);
         free_SyntaxNode(param);
       } else {
+        _debug_print_statement(statement);
         printf("Could not + types: %i, %i\n", param->type, sn->next->type);
       }
       break;
@@ -1567,6 +1605,7 @@ void resolve_operators(Statement* statement,
         DL_DELETE(statement->params, param);
         free_SyntaxNode(param);
       } else {
+        _debug_print_statement(statement);
       	printf("Could not - types: %i, %i\n", param->type, sn->next->type);
       }
       break;
@@ -1599,6 +1638,7 @@ void resolve_operators(Statement* statement,
         DL_DELETE(statement->params, param);
         free_SyntaxNode(param);
       } else {
+        _debug_print_statement(statement);
       	printf("Could not * types: %i, %i\n", param->type, sn->next->type);
       }
       break;
@@ -1625,6 +1665,7 @@ void resolve_operators(Statement* statement,
         DL_DELETE(statement->params, param);
         free_SyntaxNode(param);
       } else {
+        _debug_print_statement(statement);
       	printf("Could not // types: %i, %i\n", param->type, sn->next->type);
       }
       break;
@@ -1651,6 +1692,7 @@ void resolve_operators(Statement* statement,
       DL_DELETE(statement->params, param);
       free_SyntaxNode(param);
       } else {
+        _debug_print_statement(statement);
 	      printf("Could not / types: %i, %i\n", param->type, sn->next->type);
       }
       break;
@@ -1677,6 +1719,7 @@ void resolve_operators(Statement* statement,
       DL_DELETE(statement->params, param);
       free_SyntaxNode(param);
       } else {
+        _debug_print_statement(statement);
       	printf("Could not %% types: %i, %i\n", param->type, sn->next->type);
       }
       break;
@@ -1709,6 +1752,7 @@ void resolve_operators(Statement* statement,
         DL_DELETE(statement->params, param);
         free_SyntaxNode(param);
       } else {
+        _debug_print_statement(statement);
       	printf("Could not ** types: %i, %i\n", param->type, sn->next->type);
       }
       break;
@@ -1762,6 +1806,7 @@ void resolve_operators(Statement* statement,
         DL_DELETE(statement->params, param);
         free_SyntaxNode(param);
       } else {
+        _debug_print_statement(statement);
 	      printf("Could not == types: %i, %i\n", param->type, sn->next->type);
       }
       break;
@@ -1806,6 +1851,7 @@ void resolve_operators(Statement* statement,
         DL_DELETE(statement->params, param);
         free_SyntaxNode(param);
       } else {
+        _debug_print_statement(statement);
       	printf("Could not < types: %i, %i\n", param->type, sn->next->type);
       }
       break;
@@ -1850,6 +1896,7 @@ void resolve_operators(Statement* statement,
         DL_DELETE(statement->params, param);
         free_SyntaxNode(param);
       } else {
+        _debug_print_statement(statement);
       	printf("Could not > types: %i, %i\n", param->type, sn->next->type);
       }
       break;
@@ -1894,6 +1941,7 @@ void resolve_operators(Statement* statement,
         DL_DELETE(statement->params, param);
         free_SyntaxNode(param);
       } else {
+        _debug_print_statement(statement);
       	printf("Could not <= types: %i, %i\n", param->type, sn->next->type);
       }
       break;
@@ -1938,6 +1986,7 @@ void resolve_operators(Statement* statement,
         DL_DELETE(statement->params, param);
         free_SyntaxNode(param);
       } else {
+        _debug_print_statement(statement);
       	printf("Could not >= types: %i, %i\n", param->type, sn->next->type);
       }
       break;
@@ -1991,6 +2040,7 @@ void resolve_operators(Statement* statement,
         DL_DELETE(statement->params, param);
         free_SyntaxNode(param);
       } else {
+        _debug_print_statement(statement);
 	      printf("Could not != types: %i, %i\n", param->type, sn->next->type);
       }
       break;
@@ -2116,22 +2166,22 @@ void resolve_operators(Statement* statement,
       DL_APPEND(statement->params, new);
       switch(sn->next->type) {
         case INT:
-          if (param->data.i != 0) {
+          if (sn->next->data.i != 0) {
             new->data.i = 0;
           }
           break;
         case STRING:
-          if (param->data.s[0] != '\0') {
+          if (sn->next->data.s[0] != '\0') {
             new->data.i = 0;
           }
           break;
         case FLOAT:
-          if (param->data.f != 0) {
+          if (sn->next->data.f != 0) {
             new->data.i = 0;
           }
           break;
         case LIST: {
-          ListTypeEntry *lte = get_list(param->data.i);
+          ListTypeEntry *lte = get_list(sn->next->data.i);
           if (lte != NULL && lte->head != NULL) {
             new->data.i = 0;
           }
@@ -2341,10 +2391,12 @@ void resolve_operators(Statement* statement,
     case MIN: {
       if (sn->next == NULL || sn->next->next == NULL) break;
       if (sn->next->type != INT && sn->next->type != FLOAT) {
+        _debug_print_statement(statement);
         printf("Called min on non numeric type: %i\n", sn->next->type);
         break;
       }
       if (sn->next->next->type != INT && sn->next->next->type != FLOAT) {
+        _debug_print_statement(statement);
         printf("Called min on non numeric type: %i\n", sn->next->next->type);
         break;
       }
@@ -2389,10 +2441,12 @@ void resolve_operators(Statement* statement,
     case MAX: {
       if (sn->next == NULL || sn->next->next == NULL) break;
       if (sn->next->type != INT && sn->next->type != FLOAT) {
+        _debug_print_statement(statement);
         printf("Called max on non numeric type: %i\n", sn->next->type);
         break;
       }
       if (sn->next->next->type != INT && sn->next->next->type != FLOAT) {
+        _debug_print_statement(statement);
         printf("Called max on non numeric type: %i\n", sn->next->next->type);
         break;
       }
@@ -2435,13 +2489,19 @@ void resolve_operators(Statement* statement,
       break;
     }
     case LEN: {
-      if (sn->next == NULL || sn->next->type != LIST) break;
-      ListTypeEntry *lte = get_list(sn->next->data.i);
-      if (lte == NULL) break;
-      SyntaxNode *tmp;
-      new = new_syntax_node(INT);
-      DL_COUNT(lte->head, tmp, new->data.i);
-      DL_APPEND(statement->params, new);
+      if (sn->next == NULL || (sn->next->type != LIST && sn->next->type != STRING)) break;
+      if (sn->next->type == LIST) {
+        ListTypeEntry *lte = get_list(sn->next->data.i);
+        if (lte == NULL) break;
+        SyntaxNode *tmp;
+        new = new_syntax_node(INT);
+        DL_COUNT(lte->head, tmp, new->data.i);
+        DL_APPEND(statement->params, new);
+      } else if (sn->next->type == STRING) {
+        new = new_syntax_node(INT);
+        new->data.i = strlen(sn->next->data.s);
+        DL_APPEND(statement->params, new);
+      }
       break;
     }
     case COUNTOF: {

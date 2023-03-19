@@ -86,6 +86,7 @@ int main (void)
     };
     draw_frame(rend, "MAIN");
     
+    actors_reset_updated();
     SDL_RenderPresent(rend);
     SDL_Delay(1000/30);
   }

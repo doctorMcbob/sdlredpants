@@ -22,7 +22,7 @@ typedef struct Actor {
   char hitboxkey[32];
   char spritemapkey[32];
   char scriptmapkey[32];
-  char img[32];
+  char *img;
   char _input_name[32];
   char state[32];
   int frame;
@@ -68,4 +68,5 @@ int update_actor(char* actorKey, char* worldKey);
 Sprite* get_sprite_for_actor(Actor* actor);
 void draw_actor(SDL_Renderer* rend, Actor* actor, const char* frameKey);
 int get_script_for_actor(Actor* actor);
+void actors_reset_updated();
 #endif

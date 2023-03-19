@@ -31,6 +31,6 @@ void add_actor_to_world(const char* worldkey, const char* actorname);
 int update_world(char* worldKey);
 void draw_world(World* world, SDL_Renderer* rend, const char* frameKey);
 int exists(char* actorKey);
-
+int world_has(World *world, char *actorKey);
 # endif
 

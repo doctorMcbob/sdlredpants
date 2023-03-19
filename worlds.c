@@ -105,15 +105,20 @@ void draw_world(World* world, SDL_Renderer* rend, const char* frameKey) {
   }
 };
 
+int world_has(World *world, char *actorKey) {
+  ActorEntry *ae;
+  DL_FOREACH(worlds->actors, ae) {
+    if (strcmp(ae->actorKey, actorKey) == 0) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
 int exists(char* actorKey) {
   struct World *w, *tmp;
   HASH_ITER(hh, worlds, w, tmp) {
-    ActorEntry *ae;
-    DL_FOREACH(worlds->actors, ae) {
-      if (strcmp(ae->actorKey, actorKey) == 0) {
-        return 1;
-      }
-    }
+    if (world_has(w, actorKey)) return 1;
   }
   return 0;
 }
