@@ -1021,14 +1021,16 @@ void evaluate_literals(Statement* statement,
     case NONE:
     case FLOAT:
     case INT:
-    case STRING:
+    case STRING: { 
       new = copy_SyntaxNode(sn);
       DL_APPEND(statement->buffer, new);
       break;
-    case OPERATOR:
+    }
+    case OPERATOR: {
       new = copy_SyntaxNode(sn);
       DL_APPEND(statement->buffer, new);
       break;
+    }
     case DOT: {
       SyntaxNode* parameter = _get_last(statement->buffer);
       if (parameter == NULL || sn->next == NULL) {
@@ -1214,36 +1216,228 @@ void evaluate_literals(Statement* statement,
       DL_APPEND(statement->buffer, new);
       break;
     }
-    case INP_A:
+    case INP_A: {
       // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state A
+      Actor *a = get_actor(selfActorKey);
+      if (a == NULL) break;
+      InputState *is = get_input_state(a->_input_name);
+      if (is == NULL) break;
+      new = new_syntax_node(INT);
+      new->data.i = is->A;
+      DL_APPEND(statement->buffer, new);
       break;
-    case INP_B:
+    }
+    case INP_B: {
       // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state B
+      Actor *a = get_actor(selfActorKey);
+      if (a == NULL) break;
+      InputState *is = get_input_state(a->_input_name);
+      if (is == NULL) break;
+      new = new_syntax_node(INT);
+      new->data.i = is->B;
+      DL_APPEND(statement->buffer, new);
       break;
-    case INP_X:
+    }
+    case INP_X: {
       // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state X
+      Actor *a = get_actor(selfActorKey);
+      if (a == NULL) break;
+      InputState *is = get_input_state(a->_input_name);
+      if (is == NULL) break;
+      new = new_syntax_node(INT);
+      new->data.i = is->X;
+      DL_APPEND(statement->buffer, new);
       break;
-    case INP_Y:
+    }
+    case INP_Y: {
       // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state Y
+      Actor *a = get_actor(selfActorKey);
+      if (a == NULL) break;
+      InputState *is = get_input_state(a->_input_name);
+      if (is == NULL) break;
+      new = new_syntax_node(INT);
+      new->data.i = is->Y;
+      DL_APPEND(statement->buffer, new);
       break;
-    case INP_LEFT:
+    }
+    case INP_LEFT: {
       // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state LEFT
+      Actor *a = get_actor(selfActorKey);
+      if (a == NULL) break;
+      InputState *is = get_input_state(a->_input_name);
+      if (is == NULL) break;
+      new = new_syntax_node(INT);
+      new->data.i = is->LEFT;
+      DL_APPEND(statement->buffer, new);
       break;
-    case INP_UP:
+    }
+    case INP_UP: {
       // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state UP
+      Actor *a = get_actor(selfActorKey);
+      if (a == NULL) break;
+      InputState *is = get_input_state(a->_input_name);
+      if (is == NULL) break;
+      new = new_syntax_node(INT);
+      new->data.i = is->UP;
+      DL_APPEND(statement->buffer, new);
       break;
-    case INP_RIGHT:
+    }
+    case INP_RIGHT: {
       // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state RIGHT
+      Actor *a = get_actor(selfActorKey);
+      if (a == NULL) break;
+      InputState *is = get_input_state(a->_input_name);
+      if (is == NULL) break;
+      new = new_syntax_node(INT);
+      new->data.i = is->RIGHT;
+      DL_APPEND(statement->buffer, new);
       break;
-    case INP_DOWN:
+    }
+    case INP_DOWN: {
       // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state DOWN
+        Actor *a = get_actor(selfActorKey);
+      if (a == NULL) break;
+      InputState *is = get_input_state(a->_input_name);
+      if (is == NULL) break;
+      new = new_syntax_node(INT);
+      new->data.i = is->DOWN;
+      DL_APPEND(statement->buffer, new);
       break;
-    case INP_START:
+    }
+    case INP_START: {
       // put new SyntaxNode with type INT onto buffer, setting data.i to actorKey->_input_state START
+      Actor *a = get_actor(selfActorKey);
+      if (a == NULL) break;
+      InputState *is = get_input_state(a->_input_name);
+      if (is == NULL) break;
+      new = new_syntax_node(INT);
+      new->data.i = is->START;
+      DL_APPEND(statement->buffer, new);
       break;
-    case INP_EVENTS:
+    }
+    case INP_EVENTS: {
       // create a new SyntaxNode DL and fill it with SyntaxNodes with type STRING for each event we have in actorKey->_input_state EVENTS
+      Actor *a = get_actor(selfActorKey);
+      if (a == NULL) break;
+      InputState *is = get_input_state(a->_input_name);
+      if (is == NULL) break;
+      clear_list(0);
+      ListTypeEntry *lte = get_list(0);
+      SyntaxNode *eventNode;
+      if (is->EVENTS[A_DOWN]) {
+        eventNode = new_syntax_node(STRING);
+        eventNode->data.s = malloc(7);
+        strcpy(eventNode->data.s, "A_DOWN");
+        DL_APPEND(lte->head, eventNode);
+      }
+      if (is->EVENTS[A_UP]) {
+        eventNode = new_syntax_node(STRING);
+        eventNode->data.s = malloc(5);
+        strcpy(eventNode->data.s, "A_UP");
+        DL_APPEND(lte->head, eventNode);
+      }
+      if (is->EVENTS[B_DOWN]) {
+        eventNode = new_syntax_node(STRING);
+        eventNode->data.s = malloc(7);
+        strcpy(eventNode->data.s, "B_DOWN");
+        DL_APPEND(lte->head, eventNode);
+      }
+      if (is->EVENTS[B_UP]) {
+        eventNode = new_syntax_node(STRING);
+        eventNode->data.s = malloc(5);
+        strcpy(eventNode->data.s, "B_UP");
+        DL_APPEND(lte->head, eventNode);
+      }
+      if (is->EVENTS[X_DOWN]) {
+        eventNode = new_syntax_node(STRING);
+        eventNode->data.s = malloc(7);
+        strcpy(eventNode->data.s, "X_DOWN");
+        DL_APPEND(lte->head, eventNode);
+      }
+      if (is->EVENTS[X_UP]) {
+        eventNode = new_syntax_node(STRING);
+        eventNode->data.s = malloc(5);
+        strcpy(eventNode->data.s, "X_UP");
+        DL_APPEND(lte->head, eventNode);
+      }
+      if (is->EVENTS[Y_DOWN]) {
+        eventNode = new_syntax_node(STRING);
+        eventNode->data.s = malloc(7);
+        strcpy(eventNode->data.s, "Y_DOWN");
+        DL_APPEND(lte->head, eventNode);
+      }
+      if (is->EVENTS[Y_UP]) {
+        eventNode = new_syntax_node(STRING);
+        eventNode->data.s = malloc(5);
+        strcpy(eventNode->data.s, "Y_UP");
+        DL_APPEND(lte->head, eventNode);
+      }
+      if (is->EVENTS[LEFT_DOWN]) {
+        eventNode = new_syntax_node(STRING);
+        eventNode->data.s = malloc(10);
+        strcpy(eventNode->data.s, "LEFT_DOWN");
+        DL_APPEND(lte->head, eventNode);
+      }
+      if (is->EVENTS[LEFT_UP]) {
+        eventNode = new_syntax_node(STRING);
+        eventNode->data.s = malloc(8);
+        strcpy(eventNode->data.s, "LEFT_UP");
+        DL_APPEND(lte->head, eventNode);
+      }
+      if (is->EVENTS[UP_DOWN]) {
+        eventNode = new_syntax_node(STRING);
+        eventNode->data.s = malloc(8);
+        strcpy(eventNode->data.s, "UP_DOWN");
+        DL_APPEND(lte->head, eventNode);
+      }
+      if (is->EVENTS[UP_UP]) {
+        eventNode = new_syntax_node(STRING);
+        eventNode->data.s = malloc(6);
+        strcpy(eventNode->data.s, "UP_UP");
+        DL_APPEND(lte->head, eventNode);
+      }
+      if (is->EVENTS[RIGHT_DOWN]) {
+        eventNode = new_syntax_node(STRING);
+        eventNode->data.s = malloc(11);
+        strcpy(eventNode->data.s, "RIGHT_DOWN");
+        DL_APPEND(lte->head, eventNode);
+      }
+      if (is->EVENTS[RIGHT_UP]) {
+        eventNode = new_syntax_node(STRING);
+        eventNode->data.s = malloc(9);
+        strcpy(eventNode->data.s, "RIGHT_UP");
+        DL_APPEND(lte->head, eventNode);
+      }
+      if (is->EVENTS[DOWN_DOWN]) {
+        eventNode = new_syntax_node(STRING);
+        eventNode->data.s = malloc(10);
+        strcpy(eventNode->data.s, "DOWN_DOWN");
+        DL_APPEND(lte->head, eventNode);
+      }
+      if (is->EVENTS[DOWN_UP]) {
+        eventNode = new_syntax_node(STRING);
+        eventNode->data.s = malloc(8);
+        strcpy(eventNode->data.s, "DOWN_UP");
+        DL_APPEND(lte->head, eventNode);
+      }
+      if (is->EVENTS[START_DOWN]) {
+        eventNode = new_syntax_node(STRING);
+        eventNode->data.s = malloc(11);
+        strcpy(eventNode->data.s, "START_DOWN");
+        DL_APPEND(lte->head, eventNode);
+      }
+      if (is->EVENTS[START_UP]) {
+        eventNode = new_syntax_node(STRING);
+        eventNode->data.s = malloc(9);
+        strcpy(eventNode->data.s, "START_UP");
+        DL_APPEND(lte->head, eventNode);
+      }
+
+      new = new_syntax_node(LIST);
+      new->data.i = 0;
+      DL_APPEND(statement->buffer, new);
       break;
+    }
     }
   }
 }

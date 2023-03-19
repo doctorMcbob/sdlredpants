@@ -36,7 +36,7 @@ void scripts_load();
 int main (void)
 {
   srand(time(NULL));
-  add_list(); // 0 is reserved system list (for range)
+  add_list(); // 0 is reserved system list (for range and input events)
 
   if (SDL_Init(SDL_INIT_VIDEO) != 0)
     {
