@@ -878,7 +878,7 @@ int resolve_script(int scriptKey,
         }
       }
 
-      if (conditionalPass) {
+      if (!conditionalPass) {
         if_depth++;
       }
 
@@ -2241,22 +2241,26 @@ void resolve_operators(Statement* statement,
           if (param->data.i != 0) {
             new->data.i = 0;
           }
+          DL_DELETE(statement->params, param);
           break;
         case STRING:
           if (param->data.s[0] != '\0') {
             new->data.i = 0;
           }
+          DL_DELETE(statement->params, param);
           break;
         case FLOAT:
           if (param->data.f != 0) {
             new->data.i = 0;
           }
+          DL_DELETE(statement->params, param);
           break;
         case LIST: {
           ListTypeEntry *lte = get_list(param->data.i);
           if (lte != NULL && lte->head != NULL) {
             new->data.i = 0;
           }
+          DL_DELETE(statement->params, param);
           break;
         }
       }
@@ -2663,16 +2667,16 @@ void resolve_operators(Statement* statement,
     }
     case ABS: {
       if (sn->next == NULL) break;
-      if (sn->type != INT && sn->type != FLOAT) break;
-      switch(sn->type) {
+      if (sn->next->type != INT && sn->next->type != FLOAT) break;
+      switch(sn->next->type) {
         case INT:
           new = new_syntax_node(INT);
-          new->data.i = abs(new->data.i);
+          new->data.i = abs(sn->next->data.i);
           DL_APPEND(statement->params, new);
           break;
         case FLOAT:
           new = new_syntax_node(FLOAT);
-          new->data.i = fabs(new->data.f);
+          new->data.i = fabs(sn->next->data.f);
           DL_APPEND(statement->params, new);
           break;
       }
