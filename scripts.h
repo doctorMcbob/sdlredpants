@@ -159,7 +159,7 @@ void add_node_to_statement(Statement* statement, SyntaxNode* node);
 void add_script_map(const char* name);
 ScriptMap* get_script_map(const char* name);
 void add_script_to_script_map(const char* name, char* state, int frame, int scriptKey);
-int resolve_script(int scriptKey, char* worldKey, char* selfActorKey, char* relatedActorKey);
+int resolve_script(int scriptKey, char* worldKey, char* selfActorKey, char* relatedActorKey, int debug);
 void clean_statement(Statement* statement);
 void evaluate_literals(Statement* statement,
 		       char* worldKey,

@@ -213,7 +213,7 @@ void add_template_from_actorkey(char* actorKey) {
   HASH_ADD_STR(templates, name, a);
 }
 
-int update_actor(char* actorKey, char* worldKey) {
+int update_actor(char* actorKey, char* worldKey, int debug) {
   Actor *actor = get_actor(actorKey);
   if (!actor) return 0;
   
@@ -234,7 +234,7 @@ int update_actor(char* actorKey, char* worldKey) {
 
   int scriptKey = get_script_for_actor(actor);
   if (scriptKey != -1) {
-    int resolution = resolve_script(scriptKey, worldKey, actorKey, NULL);
+    int resolution = resolve_script(scriptKey, worldKey, actorKey, NULL, debug);
 
     if (resolution < 0) return resolution;
   }

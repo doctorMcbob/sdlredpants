@@ -493,7 +493,8 @@ void add_script_to_script_map(const char* name, char* state, int frame, int scri
 int resolve_script(int scriptKey,
 		    char* worldKey,
 		    char* selfActorKey,
-		    char* relatedActorKey) {
+		    char* relatedActorKey,
+        int debug) {
   Script* script = get_script(scriptKey);
   Statement* statement;
   int if_depth = 0;
@@ -524,9 +525,20 @@ int resolve_script(int scriptKey,
       } 
       continue;
     }
-
+    if (debug) {
+      _debug_print_statement(statement);
+      printf("Evaluating literals\n");
+    }
     evaluate_literals(statement, worldKey, selfActorKey, relatedActorKey);
+    if (debug) {
+      _debug_print_statement(statement);
+      printf("Resolving operators\n");
+    }
     resolve_operators(statement, worldKey, selfActorKey, relatedActorKey);
+    if (debug) {
+      _debug_print_statement(statement);
+      printf("Resolving verb\n");
+    }
     
     switch (statement->verb) {
     case QUIT:
@@ -2390,6 +2402,7 @@ void resolve_operators(Statement* statement,
     }
     case MIN: {
       if (sn->next == NULL || sn->next->next == NULL) break;
+      skipNbr = 2;
       if (sn->next->type != INT && sn->next->type != FLOAT) {
         _debug_print_statement(statement);
         printf("Called min on non numeric type: %i\n", sn->next->type);
@@ -2440,6 +2453,7 @@ void resolve_operators(Statement* statement,
     }
     case MAX: {
       if (sn->next == NULL || sn->next->next == NULL) break;
+      skipNbr = 2;
       if (sn->next->type != INT && sn->next->type != FLOAT) {
         _debug_print_statement(statement);
         printf("Called max on non numeric type: %i\n", sn->next->type);
@@ -2505,34 +2519,55 @@ void resolve_operators(Statement* statement,
       break;
     }
     case COUNTOF: {
-      if (sn->next == NULL || sn->next->next == NULL || sn->next->type != LIST) break;
-      ListTypeEntry *lte = get_list(sn->next->data.i);
-      if (lte == NULL) break;
-      SyntaxNode *check;
-      int count = 0;
-      DL_FOREACH(lte->head, check) {
-        if (check->type != sn->next->next->type) continue;
-        switch (check->type) {
-          case INT: {
-            if (check->data.i == sn->next->next->data.i) count++;
-            break;
+      if (sn->next == NULL || sn->next->next == NULL || (sn->next->type != LIST && sn->next->type != STRING)) break;
+      if (sn->next->type == LIST) {
+        ListTypeEntry *lte = get_list(sn->next->data.i);
+        if (lte == NULL) break;
+        SyntaxNode *check;
+        int count = 0;
+        DL_FOREACH(lte->head, check) {
+          if (check->type != sn->next->next->type) continue;
+          switch (check->type) {
+            case INT: {
+              if (check->data.i == sn->next->next->data.i) count++;
+              break;
+            }
+            case FLOAT: {
+              if (check->data.f == sn->next->next->data.f) count++;
+              break;
+            }
+            case STRING: {
+              if (strcmp(check->data.s, sn->next->next->data.s) == 0) count++;
+              break;
+            }
+            case NONE:
+              count++;
+              break;
           }
-          case FLOAT: {
-            if (check->data.f == sn->next->next->data.f) count++;
-            break;
-          }
-          case STRING: {
-            if (strcmp(check->data.s, sn->next->next->data.s) == 0) count++;
-            break;
-          }
-          case NONE:
-            count++;
-            break;
         }
+        new = new_syntax_node(INT);
+        new->data.i = count;
+        DL_APPEND(statement->params, new);
+      } else if (sn->next->type == STRING) {
+        int count = 0;
+        int i, j, k;
+        
+        for (i = 0; i < strlen(sn->next->data.s); i++) {
+            j = 0;
+            k = i;
+            while (sn->next->data.s[k] == sn->next->next->data.s[j] && j < strlen(sn->next->next->data.s)) {
+                k++;
+                j++;
+            }
+            if (j == strlen(sn->next->next->data.s)) {
+                count++;
+            }
+        }
+        new = new_syntax_node(INT);
+        new->data.i = count;
+        DL_APPEND(statement->params, new);
       }
-      new = new_syntax_node(INT);
-      new->data.i = count;
-      DL_APPEND(statement->params, new);
+      skipNbr = 2;
       break;
     }
     case EXISTS: {

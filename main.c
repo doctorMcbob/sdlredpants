@@ -33,8 +33,14 @@ void actor_load();
 void world_load();
 void boxes_load();
 void scripts_load();
-int main (void)
-{
+int main (int argc, char *argv[]) {
+  int debug = 0;
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "-d") == 0) {
+      debug = 1;
+    }
+  }
+
   srand(time(NULL));
   add_list(); // 0 is reserved system list (for range and input events)
 
@@ -81,7 +87,7 @@ int main (void)
   while (input_update() != -1) {
     SDL_RenderClear(rend);
 
-    if (update_world("root") == -1) {
+    if (update_world("root", debug) == -1) {
       break;
     };
     draw_frame(rend, "MAIN");

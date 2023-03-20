@@ -54,12 +54,12 @@ void add_actor_to_world(const char* worldkey, const char* actorname) {
   DL_APPEND(w->actors, ae);
 }
 
-int update_world(char* worldKey) {
+int update_world(char* worldKey, int debug) {
   struct World *w;
   w = get_world(worldKey);
   struct ActorEntry *ae, *tmp;
   DL_FOREACH_SAFE(w->actors, ae, tmp) {
-    if (update_actor(ae->actorKey, worldKey) == -1) return -1;
+    if (update_actor(ae->actorKey, worldKey, debug) == -1) return -1;
   }
   return 0;
 }
