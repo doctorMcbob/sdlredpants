@@ -268,8 +268,9 @@ int get_script_for_actor(Actor* actor) {
     DL_FOREACH(sm->entries, sme) {
     if (strcmp(actor->state, sme->state) != 0) continue;
     if (actor->frame < sme->frame) continue;
-    if (best)
-      if (sme->frame > best->frame) continue;
+    if (best) {
+      if (sme->frame < best->frame) continue;
+    }
     best = sme;
   }
   if (!best) {
@@ -294,8 +295,10 @@ Sprite* get_sprite_for_actor(Actor* actor) {
   DL_FOREACH(sm->entries, sme) {
     if (strcmp(actor->state, sme->state) != 0) continue;
     if (actor->frame < sme->frame) continue;
-    if (best)
-      if (sme->frame > best->frame) continue;
+    if (best) {
+      if (sme->frame < best->frame)
+        continue;
+    }
     best = sme;
   }
   if (!best) {
