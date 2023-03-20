@@ -489,6 +489,7 @@ void add_script_to_script_map(const char* name, char* state, int frame, int scri
 
   DL_APPEND(scm->entries, sme);
 }
+
 // ###########
 int resolve_script(int scriptKey,
 		    char* worldKey,
@@ -542,13 +543,11 @@ int resolve_script(int scriptKey,
     
     switch (statement->verb) {
     case QUIT:
-      clean_statement(statement);
       return -1;
     case GOODBYE:
       return -2;
       break;
     case BREAK:
-      clean_statement(statement);
       return 1;
     case RESET:
       break;
@@ -897,15 +896,7 @@ int resolve_script(int scriptKey,
       }
       char *scriptName = statement->params->data.s;
       Actor *actor = get_actor(selfActorKey);
-      ScriptMap *sm = get_script_map(actor->scriptmapkey);
-      ScriptMapEntry *sme;
-      int scriptKey = -1;
-      DL_FOREACH(sm->entries, sme) {
-        if (strcmp(sme->state, scriptName) == 0) {
-          scriptKey = sme->scriptKey;
-          break;
-        }
-      };
+      int scriptKey = find_script_from_map(actor, scriptName);
       if (scriptKey == -1) {
        _debug_print_statement(statement);
         printf("Could not find script named %s for EXEC \n", scriptName);
@@ -1259,7 +1250,7 @@ void evaluate_literals(Statement* statement,
       parameter->type = attribute->value->type;
       if (attribute->value->type == STRING) {
         parameter->data.s = (char*)malloc(strlen(attribute->value->data.s));
-        strcpy(parameter->data.s, attribute->value->data.s);
+        strncpy(parameter->data.s, attribute->value->data.s, strlen(attribute->value->data.s));
       } else {
       	parameter->data =  attribute->value->data;
       }

@@ -7,6 +7,7 @@
 # include "worlds.h"
 # include "frames.h"
 # include "scripts.h"
+# include <math.h>
 
 Actor* actors = NULL;
 Actor* templates = NULL;
@@ -213,6 +214,176 @@ void add_template_from_actorkey(char* actorKey) {
   HASH_ADD_STR(templates, name, a);
 }
 
+int collision_with(Actor *a1, Actor *a2, char *worldKey, int debug) {
+  char *scriptName = "COLLIDE";
+
+  int scriptKey = find_script_from_map(a1, scriptName);
+  if (scriptKey != -1) {
+    int resolution = resolve_script(scriptKey, worldKey, a2->name, a1->name, debug);
+    if (resolution < 0) return resolution;
+  }
+  return 0;
+}
+
+SDL_Rect* move(SDL_Rect* rect, int dx, int dy) {
+  SDL_Rect *new = malloc(sizeof(SDL_Rect));
+  new->x = rect->x + dx;
+  new->y = rect->y + dy;
+  new->w = rect->w;
+  new->h = rect->h;
+  return new;
+}
+
+int collision_check(Actor *actor, World* world, int debug) {
+  ActorEntry *ae;
+  DL_FOREACH(world->actors, ae) {
+    if (strcmp(actor->name, ae->actorKey) == 0) continue;
+    Actor *actor2 = get_actor(ae->actorKey);
+    if (SDL_HasIntersection(actor->ECB, actor2->ECB)) {
+      int resolution = collision_with(actor, actor2, world->name, debug);
+      if (resolution < 0) return resolution;
+      int resolution2 = collision_with(actor2, actor, world->name, debug);
+      if (resolution2 < 0) return resolution2;
+    }
+  }
+
+  if (floor(actor->x_vel) != 0) {
+    int direction = actor->x_vel < 0 ? 1 : -1;
+    for (int i = 0; i < (floor(actor->x_vel) / actor->ECB->w); i++) {
+      ActorEntry *ae2;
+      int exit = 0;
+      DL_FOREACH(world->actors, ae2) {
+        if (strcmp(actor->name, ae2->actorKey) == 0) continue;
+        Actor *actor2 = get_actor(ae2->actorKey);
+        if (!actor2->tangible) continue;
+        if (SDL_HasIntersection(move(actor->ECB, actor->ECB->w * i, 0), actor2->ECB)) {
+          actor->x_vel -= actor->ECB->w * i;
+          exit = 1;
+          break;
+        }
+      }
+      if (exit) break;
+    }
+
+    ActorEntry *ae2;
+    DL_FOREACH(world->actors, ae2) {
+      if (strcmp(actor->name, ae2->actorKey) == 0) continue;
+      Actor *actor2 = get_actor(ae2->actorKey);
+      if (!actor2->tangible) continue;
+      if (SDL_HasIntersection(move(actor->ECB, actor->x_vel, 0), actor2->ECB)) {
+        int resolution3 = collision_with(actor, actor2, world->name, debug);
+        if (resolution3 < 0) return resolution3;
+        int resolution4 = collision_with(actor2, actor, world->name, debug);
+        if (resolution4 < 0) return resolution4;
+      }
+    }
+
+    int check = 0;
+    while (check == 0) {
+      check = 1;
+      ActorEntry *ae3;
+      DL_FOREACH(world->actors, ae3) {
+        if (strcmp(actor->name, ae3->actorKey) == 0) continue;
+        Actor *actor3 = get_actor(ae3->actorKey);
+        if (!actor3->tangible) continue;
+        if (SDL_HasIntersection(move(actor->ECB, actor->x_vel, 0), actor3->ECB)) {
+          check = 0;
+        } 
+      }
+      if (check == 0) {
+        actor->x_vel += direction;
+      }
+    }
+  }
+
+  if (floor(actor->y_vel) != 0) {
+    int direction = actor->y_vel < 0 ? 1 : -1;
+    for (int i = 0; i < (floor(actor->y_vel) / actor->ECB->h); i++) {
+      ActorEntry *ae2;
+      int exit = 0;
+      DL_FOREACH(world->actors, ae2) {
+        if (strcmp(actor->name, ae2->actorKey) == 0) continue;
+        Actor *actor2 = get_actor(ae2->actorKey);
+        if (!actor2->tangible) continue;
+        if (SDL_HasIntersection(move(actor->ECB, 0, actor->ECB->h * i), actor2->ECB)) {
+          actor->y_vel -= actor->ECB->h * i;
+          exit = 1;
+          break;
+        }
+      }
+      if (exit) break;
+    }
+
+    ActorEntry *ae2;
+    DL_FOREACH(world->actors, ae2) {
+      if (strcmp(actor->name, ae2->actorKey) == 0) continue;
+      Actor *actor2 = get_actor(ae2->actorKey);
+      if (!actor2->tangible) continue;
+      if (SDL_HasIntersection(move(actor->ECB, 0, actor->y_vel), actor2->ECB)) {
+        int resolution3 = collision_with(actor, actor2, world->name, debug);
+        if (resolution3 < 0) return resolution3;
+        int resolution4 = collision_with(actor2, actor, world->name, debug);
+        if (resolution4 < 0) return resolution4;
+      }
+    }
+
+    int check = 0;
+    while (check == 0) {
+      check = 1;
+      ActorEntry *ae3;
+      DL_FOREACH(world->actors, ae3) {
+        if (strcmp(actor->name, ae3->actorKey) == 0) continue;
+        Actor *actor3 = get_actor(ae3->actorKey);
+        if (!actor3->tangible) continue;
+        if (SDL_HasIntersection(move(actor->ECB, 0, actor->y_vel), actor3->ECB)) {
+          check = 0;
+        } 
+      }
+      if (check == 0) {
+        actor->y_vel += direction;
+      }
+    }
+  }
+
+  if (floor(actor->x_vel) != 0 && floor(actor->y_vel) != 0) {
+    ActorEntry *ae4;
+
+    int check = 0;
+    while (check == 0) {
+      check = 1;
+      DL_FOREACH(world->actors, ae4) {
+        if (strcmp(actor->name, ae4->actorKey) == 0) continue;
+        Actor *actor4 = get_actor(ae4->actorKey);
+        if (SDL_HasIntersection(move(actor->ECB, actor->x_vel, actor->y_vel), actor4->ECB)) {
+          check = 0;
+        }
+      }
+      if (check == 0) {
+        if (floor(actor->x_vel) == 0 || floor(actor->y_vel) == 0) {
+          check = 1;
+        } else {
+          actor->x_vel += actor->x_vel < 0 ? 1 : -1;
+          actor->y_vel += actor->y_vel < 0 ? 1 : -1;
+        }
+      }
+    }
+  }
+
+  return 0;
+}
+
+int find_script_from_map(Actor* actor, char* scriptName) {
+  ScriptMap *sm = get_script_map(actor->scriptmapkey);
+  ScriptMapEntry *sme;
+
+  DL_FOREACH(sm->entries, sme) {
+    if (strcmp(sme->state, scriptName) == 0) {
+      return sme->scriptKey;
+    }
+  };
+  return -1;
+}
+
 int update_actor(char* actorKey, char* worldKey, int debug) {
   Actor *actor = get_actor(actorKey);
   if (!actor) return 0;
@@ -221,7 +392,7 @@ int update_actor(char* actorKey, char* worldKey, int debug) {
   if (!world) return 0;
   if (actor->updated) {
     if ((actor->physics || actor->tangible) && world_has(world, actorKey)) {
-      // TODO collision check
+      collision_check(actor, world, debug);
     }
     return 0;
   }
@@ -241,18 +412,32 @@ int update_actor(char* actorKey, char* worldKey, int debug) {
 
   float x_flag = actor->x_vel, y_flag = actor->y_vel;
   if (actor->physics || actor->tangible) {
-    // TODO collision check
+    collision_check(actor, world, debug);
     actor->ECB->x += floor(actor->x_vel);
     actor->ECB->y += floor(actor->y_vel);
   }
 
   if (x_flag != actor->x_vel && floor(actor->x_vel) == 0) {
     actor->x_vel = 0;
-    // TODO look for XCOLLISION script
+
+    char *scriptName = "XCOLLISION";
+
+    int scriptKey = find_script_from_map(actor, scriptName);
+    if (scriptKey != -1) {
+      int resolution = resolve_script(scriptKey, worldKey, actor->name, NULL, debug);
+      if (resolution < 0) return resolution;
+    }
   }
   if (y_flag != actor->y_vel && floor(actor->y_vel) == 0) {
     actor->y_vel = 0;
-    // TODO look for YCOLLISION script
+
+    char *scriptName = "YCOLLISION";
+
+    int scriptKey = find_script_from_map(actor, scriptName);
+    if (scriptKey != -1) {
+      int resolution = resolve_script(scriptKey, worldKey, actor->name, NULL, debug);
+      if (resolution < 0) return resolution;
+    }
   }
   
   actor->frame += 1;

@@ -69,4 +69,5 @@ Sprite* get_sprite_for_actor(Actor* actor);
 void draw_actor(SDL_Renderer* rend, Actor* actor, const char* frameKey);
 int get_script_for_actor(Actor* actor);
 void actors_reset_updated();
+int find_script_from_map(Actor* actor, char* scriptName);
 #endif
