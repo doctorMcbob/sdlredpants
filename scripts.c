@@ -884,8 +884,37 @@ int resolve_script(int scriptKey,
 
       break;
     }
-    case EXEC:
+    case EXEC: {
+      if (statement->params == NULL) {
+        _debug_print_statement(statement);
+        printf("Missing script parameter for EXEC\n");
+        break;
+      }
+      if (statement->params->type != STRING) {
+        _debug_print_statement(statement);
+        printf("Incorrect type for EXEC parameter %i\n", statement->params->type);
+        break;
+      }
+      char *scriptName = statement->params->data.s;
+      Actor *actor = get_actor(selfActorKey);
+      ScriptMap *sm = get_script_map(actor->scriptmapkey);
+      ScriptMapEntry *sme;
+      int scriptKey = -1;
+      DL_FOREACH(sm->entries, sme) {
+        if (strcmp(sme->state, scriptName) == 0) {
+          scriptKey = sme->scriptKey;
+          break;
+        }
+      };
+      if (scriptKey == -1) {
+       _debug_print_statement(statement);
+        printf("Could not find script named %s for EXEC \n", scriptName);
+        break;
+      }
+      int resolution = resolve_script(scriptKey, worldKey, selfActorKey, NULL, debug);
+      if (resolution < 0) return resolution;
       break;
+    }
     case BACK:
       break;
     case FRONT:
